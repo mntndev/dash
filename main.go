@@ -29,10 +29,7 @@ func main() {
 	// 'Mac' options tailor the application when running an macOS.
 	app := application.New(application.Options{
 		Name:        "dash",
-		Description: "A demo of using raw HTML & CSS",
-		Services: []application.Service{
-			application.NewService(&GreetService{}),
-		},
+		Description: "A configurable dashboard for external services",
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),
 		},
@@ -40,6 +37,12 @@ func main() {
 			ApplicationShouldTerminateAfterLastWindowClosed: true,
 		},
 	})
+
+	// Initialize the dashboard service with the app reference
+	dashService := NewDashboardAppService(app)
+	
+	// Register the service
+	app.RegisterService(application.NewService(dashService))
 
 	// Create a new window with the necessary options.
 	// 'Title' is the title of the window.

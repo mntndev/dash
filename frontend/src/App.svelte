@@ -1,51 +1,17 @@
 <script lang="ts">
-  import {GreetService} from "../bindings/changeme";
-  import {Events} from "@wailsio/runtime";
-
-  let name: string = '';
-  let result: string = 'Please enter your name below 👇';
-  let time: string = 'Listening for Time event...';
-
-  const doGreet = (): void => {
-    let localName = name;
-    if (!localName) {
-      localName = 'anonymous';
-    }
-    GreetService.Greet(localName).then((resultValue: string) => {
-      result = resultValue;
-    }).catch((err: any) => {
-      console.log(err);
-    });
-  }
-
-  Events.On('time', (timeValue: any) => {
-    time = timeValue.data;
-  });
+  import Dashboard from './lib/Dashboard.svelte';
 </script>
 
-<div class="container">
-  <div>
-    <span data-wml-openURL="https://wails.io">
-      <img src="/wails.png" class="logo" alt="Wails logo"/>
-    </span>
-    <span data-wml-openURL="https://svelte.dev">
-      <img src="/svelte.svg" class="logo svelte" alt="Svelte logo"/>
-    </span>
-  </div>
-  <h1>Wails + Svelte</h1>
-  <div class="result">{result}</div>
-  <div class="card">
-    <div class="input-box">
-      <input class="input" bind:value={name} type="text" autocomplete="off"/>
-      <button class="btn" on:click={doGreet}>Greet</button>
-    </div>
-  </div>
-  <div class="footer">
-    <div><p>Click on the Wails logo to learn more</p></div>
-    <div><p>{time}</p></div>
-  </div>
-</div>
+<Dashboard />
 
 <style>
-  /* Put your standard CSS here */
+  :global(*) {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  :global(body) {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
 </style>

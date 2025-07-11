@@ -1,0 +1,34 @@
+dashboard:
+  title: "Home Dashboard"
+  theme: "dark"
+  widget:
+    type: "horizontal_split"
+    config:
+      sizes: [0.3, 0.7]
+    children:
+      - type: "vertical_split"
+        config:
+          sizes: [0.5, 0.5]
+        children:
+          - type: "clock"
+            config:
+              format: "15:04:05"
+          - type: "home_assistant.entity"
+            config:
+              entity_id: "sensor.temperature"
+      - type: "home_assistant.button"
+        config:
+          entity_id: "light.living_room"
+          service: "toggle"
+          domain: "light"
+          label: "Living Room"
+
+integrations:
+  home_assistant:
+    url: "wss://your-home-assistant.local:8123/api/websocket"
+    token: "your_long_lived_access_token_here"
+  # prometheus:
+  #   url: "http://prometheus.local:9090"
+  # rss:
+  #   - url: "https://feeds.example.com/news"
+  #     refresh_interval: "15m"
