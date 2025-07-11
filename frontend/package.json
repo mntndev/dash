@@ -11,6 +11,8 @@
     "check": "svelte-check --tsconfig ./tsconfig.json"
   },
   "dependencies": {
+    "@fontsource/iosevka": "^5.2.5",
+    "@fontsource/iosevka-aile": "^5.2.5",
     "@wailsio/runtime": "latest"
   },
   "devDependencies": {

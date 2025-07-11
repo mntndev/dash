@@ -6,9 +6,7 @@ dashboard:
     config:
       sizes: [0.3, 0.7]
     children:
-      - type: "vertical_split"
-        config:
-          sizes: [0.5, 0.5]
+      - type: "vstack"
         children:
           - type: "clock"
             config:
@@ -16,12 +14,20 @@ dashboard:
           - type: "home_assistant.entity"
             config:
               entity_id: "sensor.temperature"
-      - type: "home_assistant.button"
-        config:
-          entity_id: "light.living_room"
-          service: "toggle"
-          domain: "light"
-          label: "Living Room"
+      - type: "hstack"
+        children:
+          - type: "home_assistant.button"
+            config:
+              entity_id: "light.living_room"
+              service: "toggle"
+              domain: "light"
+              label: "Living Room"
+          - type: "home_assistant.button"
+            config:
+              entity_id: "light.bedroom"
+              service: "toggle"
+              domain: "light"
+              label: "Bedroom"
 
 integrations:
   home_assistant:

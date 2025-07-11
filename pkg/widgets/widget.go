@@ -12,6 +12,7 @@ type Widget interface {
 	GetData() interface{}
 	Update(ctx context.Context) error
 	Configure(config map[string]interface{}) error
+	SetID(id string)
 	// Layout support
 	GetChildren() []Widget
 	SetChildren(children []Widget)
@@ -29,6 +30,10 @@ type BaseWidget struct {
 
 func (w *BaseWidget) GetID() string {
 	return w.ID
+}
+
+func (w *BaseWidget) SetID(id string) {
+	w.ID = id
 }
 
 func (w *BaseWidget) GetType() string {
@@ -81,6 +86,8 @@ func NewDefaultWidgetFactory() *DefaultWidgetFactory {
 	factory.RegisterCreator("clock", CreateClockWidget)
 	factory.RegisterCreator("horizontal_split", CreateHorizontalSplitWidget)
 	factory.RegisterCreator("vertical_split", CreateVerticalSplitWidget)
+	factory.RegisterCreator("vstack", CreateVStackWidget)
+	factory.RegisterCreator("hstack", CreateHStackWidget)
 	
 	return factory
 }
@@ -123,6 +130,9 @@ func (wm *WidgetManager) CreateWidget(id string, widgetType string, config map[s
 	if err != nil {
 		return fmt.Errorf("failed to create widget %s: %w", id, err)
 	}
+	
+	// Set the widget's internal ID to match the key used in the manager
+	widget.SetID(id)
 	
 	wm.widgets[id] = widget
 	return nil

@@ -14,15 +14,18 @@ import (
 )
 
 type HomeAssistantClient struct {
-	config     *config.HomeAssistantConfig
-	conn       *websocket.Conn
-	connected  bool
-	msgID      int
-	callbacks  map[int]func(HAMessage)
-	mu         sync.RWMutex
-	ctx        context.Context
-	cancel     context.CancelFunc
-	eventChan  chan HAEvent
+	config       *config.HomeAssistantConfig
+	conn         *websocket.Conn
+	connected    bool
+	authenticated bool
+	msgID        int
+	callbacks    map[int]func(HAMessage)
+	mu           sync.RWMutex
+	writeMu      sync.Mutex  // Protects WebSocket writes
+	ctx          context.Context
+	cancel       context.CancelFunc
+	eventChan    chan HAEvent
+	authChan     chan bool
 }
 
 type HAMessage struct {
@@ -63,6 +66,7 @@ func NewHomeAssistantClient(config *config.HomeAssistantConfig) *HomeAssistantCl
 		ctx:       ctx,
 		cancel:    cancel,
 		eventChan: make(chan HAEvent, 100),
+		authChan:  make(chan bool, 1),
 	}
 }
 
@@ -82,17 +86,22 @@ func (ha *HomeAssistantClient) Connect() error {
 
 	go ha.readMessages()
 
-	return ha.authenticate()
+	// Wait for authentication to complete
+	select {
+	case success := <-ha.authChan:
+		if !success {
+			return fmt.Errorf("authentication failed")
+		}
+		log.Println("Home Assistant authentication successful")
+		return nil
+	case <-time.After(10 * time.Second):
+		return fmt.Errorf("authentication timeout")
+	}
 }
 
-func (ha *HomeAssistantClient) authenticate() error {
-	var authRequired HAMessage
-	if err := ha.conn.ReadJSON(&authRequired); err != nil {
-		return fmt.Errorf("failed to read auth_required message: %w", err)
-	}
-
-	if authRequired.Type != "auth_required" {
-		return fmt.Errorf("expected auth_required, got %s", authRequired.Type)
+func (ha *HomeAssistantClient) authenticate(msg HAMessage) error {
+	if msg.Type != "auth_required" {
+		return fmt.Errorf("expected auth_required, got %s", msg.Type)
 	}
 
 	authMsg := map[string]interface{}{
@@ -100,25 +109,27 @@ func (ha *HomeAssistantClient) authenticate() error {
 		"access_token": ha.config.Token,
 	}
 
-	if err := ha.conn.WriteJSON(authMsg); err != nil {
+	ha.writeMu.Lock()
+	err := ha.conn.WriteJSON(authMsg)
+	ha.writeMu.Unlock()
+
+	if err != nil {
 		return fmt.Errorf("failed to send auth message: %w", err)
 	}
 
-	var authResp HAMessage
-	if err := ha.conn.ReadJSON(&authResp); err != nil {
-		return fmt.Errorf("failed to read auth response: %w", err)
-	}
-
-	if authResp.Type != "auth_ok" {
-		return fmt.Errorf("authentication failed: %s", authResp.Type)
-	}
-
-	log.Println("Home Assistant authentication successful")
 	return nil
 }
 
 func (ha *HomeAssistantClient) readMessages() {
-	defer ha.conn.Close()
+	defer func() {
+		ha.mu.Lock()
+		ha.connected = false
+		ha.authenticated = false
+		ha.mu.Unlock()
+		if ha.conn != nil {
+			ha.conn.Close()
+		}
+	}()
 
 	for {
 		select {
@@ -128,7 +139,13 @@ func (ha *HomeAssistantClient) readMessages() {
 			var msg HAMessage
 			if err := ha.conn.ReadJSON(&msg); err != nil {
 				log.Printf("Error reading message: %v", err)
-				ha.connected = false
+				// Signal authentication failure if we're not authenticated yet
+				if !ha.authenticated {
+					select {
+					case ha.authChan <- false:
+					default:
+					}
+				}
 				return
 			}
 
@@ -138,17 +155,55 @@ func (ha *HomeAssistantClient) readMessages() {
 }
 
 func (ha *HomeAssistantClient) handleMessage(msg HAMessage) {
-	ha.mu.RLock()
-	callback, exists := ha.callbacks[msg.ID]
-	ha.mu.RUnlock()
-
-	if exists {
-		callback(msg)
-		ha.mu.Lock()
-		delete(ha.callbacks, msg.ID)
-		ha.mu.Unlock()
+	log.Printf("Received message: type=%s, id=%d", msg.Type, msg.ID)
+	
+	// Handle authentication messages
+	if msg.Type == "auth_required" {
+		if err := ha.authenticate(msg); err != nil {
+			log.Printf("Authentication error: %v", err)
+			select {
+			case ha.authChan <- false:
+			default:
+			}
+		}
+		return
 	}
 
+	if msg.Type == "auth_ok" {
+		ha.mu.Lock()
+		ha.authenticated = true
+		ha.mu.Unlock()
+		select {
+		case ha.authChan <- true:
+		default:
+		}
+		return
+	}
+
+	if msg.Type == "auth_invalid" {
+		log.Printf("Authentication invalid")
+		select {
+		case ha.authChan <- false:
+		default:
+		}
+		return
+	}
+
+	// Handle callback messages (those with IDs)
+	if msg.ID > 0 {
+		ha.mu.RLock()
+		callback, exists := ha.callbacks[msg.ID]
+		ha.mu.RUnlock()
+
+		if exists {
+			callback(msg)
+			ha.mu.Lock()
+			delete(ha.callbacks, msg.ID)
+			ha.mu.Unlock()
+		}
+	}
+
+	// Handle event messages
 	if msg.Type == "event" && msg.Event != nil {
 		select {
 		case ha.eventChan <- *msg.Event:
@@ -159,8 +214,17 @@ func (ha *HomeAssistantClient) handleMessage(msg HAMessage) {
 }
 
 func (ha *HomeAssistantClient) sendMessage(msgType string, data map[string]interface{}) (int, error) {
-	if !ha.connected {
+	ha.mu.RLock()
+	connected := ha.connected
+	authenticated := ha.authenticated
+	ha.mu.RUnlock()
+
+	if !connected {
 		return 0, fmt.Errorf("not connected")
+	}
+
+	if !authenticated {
+		return 0, fmt.Errorf("not authenticated")
 	}
 
 	ha.mu.Lock()
@@ -177,7 +241,11 @@ func (ha *HomeAssistantClient) sendMessage(msgType string, data map[string]inter
 		msg[k] = v
 	}
 
-	if err := ha.conn.WriteJSON(msg); err != nil {
+	ha.writeMu.Lock()
+	err := ha.conn.WriteJSON(msg)
+	ha.writeMu.Unlock()
+
+	if err != nil {
 		return 0, fmt.Errorf("failed to send message: %w", err)
 	}
 
@@ -265,5 +333,5 @@ func (ha *HomeAssistantClient) Close() error {
 func (ha *HomeAssistantClient) IsConnected() bool {
 	ha.mu.RLock()
 	defer ha.mu.RUnlock()
-	return ha.connected
+	return ha.connected && ha.authenticated
 }

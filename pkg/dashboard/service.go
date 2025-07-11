@@ -181,7 +181,7 @@ func (ds *DashboardService) getDashboardData() DashboardData {
 	}
 	
 	// Build the root widget
-	rootWidget := ds.buildWidget(ds.config.Dashboard.Widget)
+	rootWidget := ds.buildWidgetFromID("root", ds.config.Dashboard.Widget)
 	
 	return DashboardData{
 		Title:  ds.config.Dashboard.Title,
@@ -191,8 +191,8 @@ func (ds *DashboardService) getDashboardData() DashboardData {
 	}
 }
 
-func (ds *DashboardService) buildWidget(config config.WidgetConfig) WidgetData {
-	widgetID := fmt.Sprintf("widget_%s_%d", config.Type, time.Now().UnixNano())
+func (ds *DashboardService) buildWidgetFromID(idPrefix string, config config.WidgetConfig) WidgetData {
+	widgetID := fmt.Sprintf("%s_%s", idPrefix, config.Type)
 	
 	if widget, exists := ds.widgetManager.GetWidget(widgetID); exists {
 		widgetData := WidgetData{
@@ -203,10 +203,11 @@ func (ds *DashboardService) buildWidget(config config.WidgetConfig) WidgetData {
 		}
 		
 		// Add children if this is a container widget
-		if widget.IsContainer() {
+		if widget.IsContainer() && len(config.Children) > 0 {
 			children := make([]WidgetData, len(config.Children))
 			for i, childConfig := range config.Children {
-				children[i] = ds.buildWidget(childConfig)
+				childID := fmt.Sprintf("%s_child_%d", idPrefix, i)
+				children[i] = ds.buildWidgetFromID(childID, childConfig)
 			}
 			widgetData.Children = children
 		}
