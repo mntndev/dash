@@ -16,15 +16,17 @@ type DexcomProvider interface {
 }
 
 type DexcomClient struct {
-	config       *config.DexcomConfig
-	client       *dexcomshare.Client
-	connected    bool
-	mu           sync.RWMutex
-	ctx          context.Context
-	cancel       context.CancelFunc
-	lastEntry    *dexcomshare.GlucoseEntry
-	lastUpdate   time.Time
+	config         *config.DexcomConfig
+	client         *dexcomshare.Client
+	connected      bool
+	mu             sync.RWMutex
+	ctx            context.Context
+	cancel         context.CancelFunc
+	lastEntry      *dexcomshare.GlucoseEntry
+	lastUpdate     time.Time
 	updateInterval time.Duration
+	historicalData []dexcomshare.GlucoseEntry
+	maxHistory     int
 }
 
 func NewDexcomClient(config *config.DexcomConfig) *DexcomClient {
@@ -34,6 +36,8 @@ func NewDexcomClient(config *config.DexcomConfig) *DexcomClient {
 		ctx:            ctx,
 		cancel:         cancel,
 		updateInterval: 1 * time.Minute,
+		historicalData: make([]dexcomshare.GlucoseEntry, 0),
+		maxHistory:     36, // 3 hours of 5-minute readings
 	}
 }
 
@@ -84,7 +88,7 @@ func (dc *DexcomClient) fetchGlucoseData() error {
 		return fmt.Errorf("Dexcom client not connected")
 	}
 
-	entries, err := client.ReadGlucose(1440, 1)
+	entries, err := client.ReadGlucose(180, dc.maxHistory) // 3 hours instead of 24
 	if err != nil {
 		return fmt.Errorf("failed to read glucose: %w", err)
 	}
@@ -96,9 +100,10 @@ func (dc *DexcomClient) fetchGlucoseData() error {
 	dc.mu.Lock()
 	dc.lastEntry = &entries[0]
 	dc.lastUpdate = time.Now()
+	dc.historicalData = entries
 	dc.mu.Unlock()
 
-	log.Printf("Updated glucose data: %d mg/dL, trend: %s", entries[0].Value, entries[0].Trend)
+	log.Printf("Updated glucose data: %d mg/dL, trend: %s, historical entries: %d", entries[0].Value, entries[0].Trend, len(entries))
 	return nil
 }
 
@@ -116,6 +121,23 @@ func (dc *DexcomClient) GetLatestGlucose() (*dexcomshare.GlucoseEntry, time.Time
 
 	entry := *dc.lastEntry
 	return &entry, dc.lastUpdate, nil
+}
+
+func (dc *DexcomClient) GetHistoricalGlucose() ([]dexcomshare.GlucoseEntry, error) {
+	dc.mu.RLock()
+	defer dc.mu.RUnlock()
+
+	if !dc.connected {
+		log.Printf("GetHistoricalGlucose: Dexcom client not connected")
+		return nil, fmt.Errorf("Dexcom client not connected")
+	}
+
+	log.Printf("GetHistoricalGlucose: Returning %d historical entries", len(dc.historicalData))
+	
+	// Return a copy of the historical data
+	historicalCopy := make([]dexcomshare.GlucoseEntry, len(dc.historicalData))
+	copy(historicalCopy, dc.historicalData)
+	return historicalCopy, nil
 }
 
 func (dc *DexcomClient) IsConnected() bool {

@@ -40,4 +40,13 @@ export interface DexcomData {
   trend: string;
   timestamp: string;
   unit: string;
+  historical?: DexcomReading[];
+  low_threshold: number;
+  high_threshold: number;
+}
+
+export interface DexcomReading {
+  value: number;
+  trend: string;
+  timestamp: string;
 }

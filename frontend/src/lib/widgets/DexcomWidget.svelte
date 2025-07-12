@@ -1,6 +1,7 @@
 <script lang="ts">
     import type { WidgetData, DexcomData } from "../types";
     import { getWidgetData } from "../stores.svelte";
+    import SvgGraph from "../components/SvgGraph.svelte";
 
     let { widget }: { widget: WidgetData } = $props();
     
@@ -13,13 +14,16 @@
     let trend = $derived(glucoseData?.trend || "?");
     let unit = $derived(glucoseData?.unit || "mg/dL");
     let timestamp = $derived(glucoseData?.timestamp ? new Date(glucoseData.timestamp) : null);
+    let historicalData = $derived(glucoseData?.historical || []);
     
-    // Determine glucose level color based on value
+    // Determine glucose level color based on value (SVG fill classes)
     let glucoseColor = $derived(() => {
-        if (glucoseValue < 70) return "text-red-500"; // Low
-        if (glucoseValue > 180) return "text-orange-500"; // High
-        if (glucoseValue > 250) return "text-red-500"; // Very high
-        return "text-green-500"; // Normal
+        const lowThreshold = glucoseData?.low_threshold || 70;
+        const highThreshold = glucoseData?.high_threshold || 160;
+        
+        if (glucoseValue < lowThreshold) return "fill-red-500"; // Low
+        if (glucoseValue > highThreshold) return "fill-orange-500"; // High
+        return "fill-green-500"; // Normal
     });
     
     // Format timestamp
@@ -37,57 +41,32 @@
         if (diffHours === 1) return "1 hour ago";
         return `${diffHours} hours ago`;
     });
+    
 </script>
 
-<div class="p-6 flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg border border-blue-200 flex-none">
-    <!-- Main glucose display -->
-    <div class="flex items-center gap-3 mb-4">
-        <div class="text-5xl md:text-6xl font-bold font-mono {glucoseColor()}">
-            {glucoseValue}
-        </div>
-        <div class="flex flex-col items-start">
-            <div class="text-2xl md:text-3xl font-semibold text-gray-600">
-                {trend}
-            </div>
-            <div class="text-sm text-gray-500 font-medium">
-                {unit}
-            </div>
-        </div>
-    </div>
-    
-    <!-- Status information -->
-    <div class="text-center">
-        <div class="text-lg font-semibold text-gray-700 mb-1">
-            Blood Glucose
-        </div>
-        <div class="text-sm text-gray-500">
-            {timeAgo()}
-        </div>
-        {#if timestamp}
-            <div class="text-xs text-gray-400 mt-1">
-                {timestamp.toLocaleTimeString()}
+<div class="flex flex-col flex-1 min-h-0">
+    <!-- Historical graph -->
+    <div class="flex-1 min-h-0 mb-4 min-h-[120px] relative">
+        {#if historicalData && historicalData.length > 0}
+            <SvgGraph 
+                data={historicalData} 
+                width={400} 
+                height={180} 
+                className="w-full h-full"
+                lowThreshold={glucoseData?.low_threshold || 70}
+                highThreshold={glucoseData?.high_threshold || 160}
+                currentValue={glucoseValue}
+                currentUnit={unit}
+                timeAgo={timeAgo()}
+                glucoseColor={glucoseColor()}
+            />
+        {:else}
+            <div class="flex-1 flex items-center justify-center text-gray-500 min-h-[120px]">
+                <div class="text-center">
+                    <div class="text-lg mb-2">📊</div>
+                    <div class="text-sm">Loading historical data...</div>
+                </div>
             </div>
         {/if}
-    </div>
-    
-    <!-- Range indicator -->
-    <div class="mt-4 w-full max-w-xs">
-        <div class="flex justify-between text-xs text-gray-500 mb-1">
-            <span>Low</span>
-            <span>Normal</span>
-            <span>High</span>
-        </div>
-        <div class="h-2 bg-gradient-to-r from-red-400 via-green-400 to-red-400 rounded-full relative">
-            <!-- Current value indicator -->
-            <div 
-                class="absolute w-3 h-3 bg-white border-2 border-gray-600 rounded-full transform -translate-y-0.5"
-                style="left: {Math.min(Math.max((glucoseValue - 40) / 260 * 100, 0), 100)}%"
-            ></div>
-        </div>
-        <div class="flex justify-between text-xs text-gray-400 mt-1">
-            <span>40</span>
-            <span>70-180</span>
-            <span>300</span>
-        </div>
     </div>
 </div>
