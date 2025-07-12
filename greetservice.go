@@ -34,9 +34,12 @@ func NewDashboardAppService(app *application.App) *DashboardAppService {
 	}
 	
 	dashboardService := dashboard.NewDashboardService(cfg, eventEmitter)
-	if err := dashboardService.Initialize(); err != nil {
-		log.Printf("Failed to initialize dashboard service: %v", err)
-	}
+	// Initialize dashboard service in a goroutine to avoid blocking app startup
+	go func() {
+		if err := dashboardService.Initialize(); err != nil {
+			log.Printf("Failed to initialize dashboard service: %v", err)
+		}
+	}()
 	
 	return &DashboardAppService{
 		dashboardService: dashboardService,

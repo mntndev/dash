@@ -28,6 +28,7 @@ type WidgetConfig struct {
 
 type IntegrationsConfig struct {
 	HomeAssistant *HomeAssistantConfig `yaml:"home_assistant,omitempty"`
+	Dexcom        *DexcomConfig        `yaml:"dexcom,omitempty"`
 	Prometheus    *PrometheusConfig    `yaml:"prometheus,omitempty"`
 	RSS           []RSSConfig          `yaml:"rss,omitempty"`
 }
@@ -35,6 +36,11 @@ type IntegrationsConfig struct {
 type HomeAssistantConfig struct {
 	URL   string `yaml:"url"`
 	Token string `yaml:"token"`
+}
+
+type DexcomConfig struct {
+	Username string `yaml:"username"`
+	Password string `yaml:"password"`
 }
 
 type PrometheusConfig struct {

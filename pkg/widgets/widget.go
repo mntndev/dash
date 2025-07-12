@@ -73,18 +73,21 @@ type WidgetFactory interface {
 }
 
 type DefaultWidgetFactory struct {
-	creators map[string]func(map[string]interface{}) (Widget, error)
+	creators map[string]func(map[string]interface{}, ServiceProvider) (Widget, error)
+	service  ServiceProvider
 }
 
-func NewDefaultWidgetFactory() *DefaultWidgetFactory {
+func NewDefaultWidgetFactory(service ServiceProvider) *DefaultWidgetFactory {
 	factory := &DefaultWidgetFactory{
-		creators: make(map[string]func(map[string]interface{}) (Widget, error)),
+		creators: make(map[string]func(map[string]interface{}, ServiceProvider) (Widget, error)),
+		service:  service,
 	}
 	
 	factory.RegisterCreator("home_assistant.entity", CreateHAEntityWidget)
 	factory.RegisterCreator("home_assistant.button", CreateHAButtonWidget)
 	factory.RegisterCreator("home_assistant.switch", CreateHASwitchWidget)
 	factory.RegisterCreator("home_assistant.light", CreateHALightWidget)
+	factory.RegisterCreator("dexcom", CreateDexcomWidget)
 	factory.RegisterCreator("clock", CreateClockWidget)
 	factory.RegisterCreator("horizontal_split", CreateHorizontalSplitWidget)
 	factory.RegisterCreator("vertical_split", CreateVerticalSplitWidget)
@@ -93,7 +96,7 @@ func NewDefaultWidgetFactory() *DefaultWidgetFactory {
 	return factory
 }
 
-func (f *DefaultWidgetFactory) RegisterCreator(widgetType string, creator func(map[string]interface{}) (Widget, error)) {
+func (f *DefaultWidgetFactory) RegisterCreator(widgetType string, creator func(map[string]interface{}, ServiceProvider) (Widget, error)) {
 	f.creators[widgetType] = creator
 }
 
@@ -103,7 +106,7 @@ func (f *DefaultWidgetFactory) Create(widgetType string, config map[string]inter
 		return nil, fmt.Errorf("unsupported widget type: %s", widgetType)
 	}
 	
-	return creator(config)
+	return creator(config, f.service)
 }
 
 func (f *DefaultWidgetFactory) GetSupportedTypes() []string {
@@ -166,7 +169,7 @@ type GrowWidget struct {
 	*BaseWidget
 }
 
-func CreateGrowWidget(config map[string]interface{}) (Widget, error) {
+func CreateGrowWidget(config map[string]interface{}, service ServiceProvider) (Widget, error) {
 	widget := &GrowWidget{
 		BaseWidget: &BaseWidget{
 			ID:       generateWidgetID(),

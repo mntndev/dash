@@ -23,7 +23,7 @@ type LayoutData struct {
 	Children []Widget  `json:"children,omitempty"`
 }
 
-func CreateHorizontalSplitWidget(config map[string]interface{}) (Widget, error) {
+func CreateHorizontalSplitWidget(config map[string]interface{}, service ServiceProvider) (Widget, error) {
 	sizes := []float64{}
 	if sizesConfig, ok := config["sizes"].([]interface{}); ok {
 		for _, size := range sizesConfig {
@@ -46,7 +46,7 @@ func CreateHorizontalSplitWidget(config map[string]interface{}) (Widget, error) 
 	return widget, nil
 }
 
-func CreateVerticalSplitWidget(config map[string]interface{}) (Widget, error) {
+func CreateVerticalSplitWidget(config map[string]interface{}, service ServiceProvider) (Widget, error) {
 	sizes := []float64{}
 	if sizesConfig, ok := config["sizes"].([]interface{}); ok {
 		for _, size := range sizesConfig {

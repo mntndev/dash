@@ -17,11 +17,13 @@ type DashboardService struct {
 	config          *config.Config
 	widgetManager   *widgets.WidgetManager
 	haClient        *integrations.HomeAssistantClient
+	dexcomClient    *integrations.DexcomClient
 	eventEmitter    EventEmitter
 	mu              sync.RWMutex
 	ctx             context.Context
 	cancel          context.CancelFunc
 	updateInterval  time.Duration
+	initialized     bool
 }
 
 type EventEmitter interface {
@@ -47,17 +49,16 @@ type DashboardData struct {
 func NewDashboardService(config *config.Config, eventEmitter EventEmitter) *DashboardService {
 	ctx, cancel := context.WithCancel(context.Background())
 	
-	widgetFactory := widgets.NewDefaultWidgetFactory()
-	widgetManager := widgets.NewWidgetManager(widgetFactory)
-	
 	service := &DashboardService{
 		config:         config,
-		widgetManager:  widgetManager,
 		eventEmitter:   eventEmitter,
 		ctx:            ctx,
 		cancel:         cancel,
 		updateInterval: 5 * time.Second,
 	}
+	
+	// Defer widget manager creation until Initialize() is called
+	// This avoids creating widgets before integration clients are set up
 	
 	return service
 }
@@ -65,6 +66,11 @@ func NewDashboardService(config *config.Config, eventEmitter EventEmitter) *Dash
 func (ds *DashboardService) Initialize() error {
 	ds.mu.Lock()
 	defer ds.mu.Unlock()
+	
+	// Create widget manager now that service is being initialized
+	widgetFactory := widgets.NewDefaultWidgetFactory(ds)
+	widgetManager := widgets.NewWidgetManager(widgetFactory)
+	ds.widgetManager = widgetManager
 	
 	if ds.config.Integrations.HomeAssistant != nil {
 		log.Printf("Initializing Home Assistant client...")
@@ -84,6 +90,20 @@ func (ds *DashboardService) Initialize() error {
 		}()
 	}
 	
+	if ds.config.Integrations.Dexcom != nil {
+		log.Printf("Initializing Dexcom client...")
+		ds.dexcomClient = integrations.NewDexcomClient(ds.config.Integrations.Dexcom)
+		// Connect to Dexcom in a separate goroutine to avoid blocking
+		go func() {
+			log.Printf("Connecting to Dexcom...")
+			if err := ds.dexcomClient.Connect(); err != nil {
+				log.Printf("Failed to connect to Dexcom: %v", err)
+			} else {
+				log.Printf("Successfully connected to Dexcom")
+			}
+		}()
+	}
+	
 	log.Printf("Creating widgets...")
 	if err := ds.createWidgets(); err != nil {
 		return fmt.Errorf("failed to create widgets: %w", err)
@@ -92,6 +112,13 @@ func (ds *DashboardService) Initialize() error {
 	
 	log.Printf("Starting update loop...")
 	go ds.updateLoop()
+	
+	// Mark as initialized
+	ds.initialized = true
+	
+	// Emit initial dashboard data now that we're fully initialized
+	dashboardData := ds.getDashboardData()
+	ds.eventEmitter.Emit("dashboard_update", dashboardData)
 	
 	log.Printf("Dashboard service initialized successfully")
 	return nil
@@ -111,10 +138,7 @@ func (ds *DashboardService) createWidgetFromConfig(config config.WidgetConfig, i
 	}
 	log.Printf("Successfully created widget: %s", widgetID)
 	
-	widget, _ := ds.widgetManager.GetWidget(widgetID)
-	if haWidget, ok := widget.(interface{ SetHAClient(*integrations.HomeAssistantClient) }); ok && ds.haClient != nil {
-		haWidget.SetHAClient(ds.haClient)
-	}
+	// Widget now has access to clients via ServiceProvider interface - no manual injection needed
 	
 	// Create children for layout widgets
 	for i, childConfig := range config.Children {
@@ -176,8 +200,26 @@ func (ds *DashboardService) handleHAEvents() {
 
 func (ds *DashboardService) getDashboardData() DashboardData {
 	status := make(map[string]interface{})
+	
+	// Check if service is initialized
+	if !ds.initialized {
+		return DashboardData{
+			Title:  ds.config.Dashboard.Title,
+			Theme:  ds.config.Dashboard.Theme,
+			Widget: WidgetData{
+				ID:   "loading",
+				Type: "loading",
+				Data: map[string]string{"message": "Initializing dashboard..."},
+			},
+			Status: map[string]interface{}{"initializing": true},
+		}
+	}
+	
 	if ds.haClient != nil {
 		status["home_assistant"] = ds.haClient.IsConnected()
+	}
+	if ds.dexcomClient != nil {
+		status["dexcom"] = ds.dexcomClient.IsConnected()
 	}
 	
 	// Build the root widget
@@ -241,6 +283,10 @@ func (ds *DashboardService) getWidgetLastUpdate(widget widgets.Widget) time.Time
 		if w.BaseWidget != nil {
 			return w.BaseWidget.LastUpdate
 		}
+	case *widgets.DexcomWidget:
+		if w.BaseWidget != nil {
+			return w.BaseWidget.LastUpdate
+		}
 	case *widgets.ClockWidget:
 		if w.BaseWidget != nil {
 			return w.BaseWidget.LastUpdate
@@ -257,6 +303,19 @@ func (ds *DashboardService) GetDashboardData() DashboardData {
 	ds.mu.RLock()
 	defer ds.mu.RUnlock()
 	return ds.getDashboardData()
+}
+
+// ServiceProvider interface implementation
+func (ds *DashboardService) GetHAClient() *integrations.HomeAssistantClient {
+	ds.mu.RLock()
+	defer ds.mu.RUnlock()
+	return ds.haClient
+}
+
+func (ds *DashboardService) GetDexcomClient() *integrations.DexcomClient {
+	ds.mu.RLock()
+	defer ds.mu.RUnlock()
+	return ds.dexcomClient
 }
 
 func (ds *DashboardService) TriggerWidget(widgetID string) error {
@@ -321,7 +380,14 @@ func (ds *DashboardService) ReloadConfig(configPath string) error {
 		ds.haClient = nil
 	}
 	
-	ds.widgetManager = widgets.NewWidgetManager(widgets.NewDefaultWidgetFactory())
+	if ds.dexcomClient != nil {
+		ds.dexcomClient.Close()
+		ds.dexcomClient = nil
+	}
+	
+	// Recreate widget manager with updated service
+	widgetFactory := widgets.NewDefaultWidgetFactory(ds)
+	ds.widgetManager = widgets.NewWidgetManager(widgetFactory)
 	
 	return ds.Initialize()
 }
@@ -330,7 +396,11 @@ func (ds *DashboardService) Close() error {
 	ds.cancel()
 	
 	if ds.haClient != nil {
-		return ds.haClient.Close()
+		ds.haClient.Close()
+	}
+	
+	if ds.dexcomClient != nil {
+		ds.dexcomClient.Close()
 	}
 	
 	return nil

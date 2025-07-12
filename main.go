@@ -49,16 +49,18 @@ func main() {
 	// 'Mac' options tailor the window when running on macOS.
 	// 'BackgroundColour' is the background colour of the window.
 	// 'URL' is the URL that will be loaded into the webview.
-	app.Window.NewWithOptions(application.WebviewWindowOptions{
-		Title: "Window 1",
-		Mac: application.MacWindow{
-			InvisibleTitleBarHeight: 50,
-			Backdrop:                application.MacBackdropTranslucent,
-			TitleBar:                application.MacTitleBarHiddenInset,
-		},
-		BackgroundColour: application.NewRGB(27, 38, 54),
-		URL:              "/",
-	})
+	log.Println("Creating window...")
+	window := app.Window.New()
+	log.Println("Window created with defaults")
+	
+	// Try to set basic properties
+	window.SetTitle("Dash - Dashboard")
+	window.SetSize(1200, 800)
+	window.Center()
+	
+	log.Println("Window configured, showing...")
+	window.Show()
+	log.Println("Window show() called")
 
 	// Create a goroutine that emits an event containing the current time every second.
 	// The frontend can listen to this event and update the UI accordingly.

@@ -6,6 +6,7 @@ toolchain go1.24.5
 
 require (
 	github.com/gorilla/websocket v1.5.3
+	github.com/tgiv014/dexcom-share v0.0.0-20230407060014-4a7fb8995bae
 	github.com/wailsapp/wails/v3 v3.0.0-alpha.10
 	gopkg.in/yaml.v3 v3.0.1
 )

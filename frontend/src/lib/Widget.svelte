@@ -5,18 +5,20 @@
   import HAButtonWidget from './widgets/HAButtonWidget.svelte';
   import HASwitchWidget from './widgets/HASwitchWidget.svelte';
   import HALightWidget from './widgets/HALightWidget.svelte';
+  import DexcomWidget from './widgets/DexcomWidget.svelte';
   import HorizontalSplitWidget from './widgets/HorizontalSplitWidget.svelte';
   import VerticalSplitWidget from './widgets/VerticalSplitWidget.svelte';
   import GrowWidget from './widgets/GrowWidget.svelte';
 
   let { widget }: { widget: WidgetData } = $props();
 
-  const widgets = {
+  const widgets: Record<string, any> = {
     'clock': ClockWidget,
     'home_assistant.entity': HAEntityWidget,
     'home_assistant.button': HAButtonWidget,
     'home_assistant.switch': HASwitchWidget,
     'home_assistant.light': HALightWidget,
+    'dexcom': DexcomWidget,
     'horizontal_split': HorizontalSplitWidget,
     'vertical_split': VerticalSplitWidget,
     'grow': GrowWidget

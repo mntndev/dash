@@ -34,3 +34,10 @@ export interface ClockData {
   format: string;
   display: string;
 }
+
+export interface DexcomData {
+  value: number;
+  trend: string;
+  timestamp: string;
+  unit: string;
+}
