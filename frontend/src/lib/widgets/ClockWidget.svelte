@@ -8,7 +8,7 @@
 </script>
 
 <div class="p-4 flex flex-col justify-center items-center flex-none">
-  <div class="text-6xl md:text-7xl font-light font-mono text-blue-600">
+  <div class="text-6xl md:text-7xl font-light font-mono text-gray-200">
     {displayTime}
   </div>
 </div>

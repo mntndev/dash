@@ -39,12 +39,12 @@
     <div class="flex-1 p-4 overflow-auto">
         {#if appState.loading}
             <div class="flex flex-col items-center justify-center h-full">
-                <div class="w-10 h-10 border-4 border-gray-300 border-t-blue-500 rounded-full animate-spin mb-4"></div>
-                <p class="text-gray-600">Loading dashboard...</p>
+                <div class="w-10 h-10 border-4 border-gray-500 border-t-gray-200 animate-spin mb-4"></div>
+                <p class="text-gray-500">Loading dashboard...</p>
             </div>
         {:else if appState.error}
             <div class="flex flex-col items-center justify-center h-full">
-                <p class="text-red-600">{appState.error}</p>
+                <p class="text-gray-200">{appState.error}</p>
             </div>
         {:else if appState.dashboardData}
             <div class="w-full h-full min-h-96">
@@ -59,8 +59,8 @@
             {#each Object.entries(appState.dashboardData.status) as [service, connected]}
                 <div 
                     class="flex-1 transition-colors duration-300"
-                    class:bg-green-500={connected} 
-                    class:bg-red-500={!connected}
+                    class:bg-gray-200={connected} 
+                    class:bg-gray-500={!connected}
                     title="{service}: {connected ? 'Connected' : 'Disconnected'}"
                 ></div>
             {/each}
