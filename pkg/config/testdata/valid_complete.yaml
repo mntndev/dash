@@ -1,0 +1,32 @@
+dashboard:
+  title: "Complete Test Dashboard"
+  theme: "dark"
+  fullscreen: true
+  widget:
+    type: "vertical_split"
+    children:
+      - type: "horizontal_split"
+        children:
+          - type: "home_assistant.entity"
+            config:
+              entity_id: "sensor.temperature"
+          - type: "dexcom"
+            config:
+              low_threshold: 70
+              high_threshold: 180
+      - type: "clock"
+        config:
+          format: "15:04:05"
+
+integrations:
+  home_assistant:
+    url: "ws://localhost:8123/api/websocket"
+    token: "test_token_123"
+  dexcom:
+    username: "test_user"
+    password: "test_pass"
+  prometheus:
+    url: "http://localhost:9090"
+  rss:
+    - url: "https://example.com/feed.xml"
+      refresh_interval: "1h"

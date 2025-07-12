@@ -1,0 +1,6 @@
+dashboard:
+  title: "Invalid Widget Test"
+  theme: "dark"
+  widget:
+    type: "horizontal_split"
+    # Layout widget missing children

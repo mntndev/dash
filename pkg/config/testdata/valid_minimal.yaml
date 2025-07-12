@@ -1,0 +1,7 @@
+dashboard:
+  title: "Minimal Test Dashboard"
+  theme: "dark"
+  widget:
+    type: "clock"
+    config:
+      format: "15:04:05"

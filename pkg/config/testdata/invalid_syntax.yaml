@@ -1,0 +1,8 @@
+dashboard:
+  title: "Invalid Syntax Test"
+  theme: "dark"
+  widget:
+    type: "clock"
+    config:
+      format: "15:04:05"
+    invalid_yaml: [unclosed bracket
