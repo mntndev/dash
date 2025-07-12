@@ -8,17 +8,20 @@ import (
 	"github.com/mntndev/dash/pkg/integrations"
 )
 
+// Provider interface combines all the services widgets might need
+type Provider interface {
+	GetHAClient() *integrations.HomeAssistantClient
+	GetDexcomClient() *integrations.DexcomClient
+	Emit(event string, data interface{})
+}
+
 type Widget interface {
 	GetID() string
 	GetType() string
 	GetData() interface{}
-	Update(ctx context.Context) error
-	ShouldUpdate() bool
-	Configure(config map[string]interface{}) error
-	SetID(id string)
+	Init(ctx context.Context) error
 	GetChildren() []Widget
-	SetChildren(children []Widget)
-	IsContainer() bool
+	Close() error
 }
 
 // Capability interfaces for widgets
@@ -41,58 +44,40 @@ type Container interface {
 }
 
 type BaseWidget struct {
-	ID       string
-	Type     string
-	Config   map[string]interface{}
-	Data     interface{}
+	ID         string
+	Type       string
+	Config     map[string]interface{}
+	Data       interface{}
 	LastUpdate time.Time
-	Children []Widget
+	Children   []Widget
 }
 
 func (w *BaseWidget) GetID() string {
 	return w.ID
 }
 
-func (w *BaseWidget) SetID(id string) {
-	w.ID = id
-}
-
 func (w *BaseWidget) GetType() string {
 	return w.Type
 }
 
-
 func (w *BaseWidget) GetData() interface{} {
 	return w.Data
-}
-
-func (w *BaseWidget) Configure(config map[string]interface{}) error {
-	w.Config = config
-	return nil
 }
 
 func (w *BaseWidget) GetChildren() []Widget {
 	return w.Children
 }
 
-func (w *BaseWidget) SetChildren(children []Widget) {
-	w.Children = children
-}
-
-func (w *BaseWidget) IsContainer() bool {
-	return len(w.Children) > 0
-}
-
-func (w *BaseWidget) Update(ctx context.Context) error {
+func (w *BaseWidget) Init(ctx context.Context) error {
 	return nil
 }
 
-func (w *BaseWidget) ShouldUpdate() bool {
-	// Default implementation: update every time
-	return true
+func (w *BaseWidget) Close() error {
+	// Default implementation: no cleanup needed
+	return nil
 }
 
-type WidgetCreator func(config map[string]interface{}, haProvider integrations.HAProvider, dexcomProvider integrations.DexcomProvider) (Widget, error)
+type WidgetCreator func(id string, config map[string]interface{}, children []Widget, provider Provider) (Widget, error)
 
 type WidgetRegistry struct {
 	creators map[string]WidgetCreator
@@ -108,12 +93,12 @@ func (wr *WidgetRegistry) Register(widgetType string, creator WidgetCreator) {
 	wr.creators[widgetType] = creator
 }
 
-func (wr *WidgetRegistry) Create(widgetType string, config map[string]interface{}, haProvider integrations.HAProvider, dexcomProvider integrations.DexcomProvider) (Widget, error) {
+func (wr *WidgetRegistry) Create(widgetType string, id string, config map[string]interface{}, children []Widget, provider Provider) (Widget, error) {
 	creator, exists := wr.creators[widgetType]
 	if !exists {
 		return nil, fmt.Errorf("unsupported widget type: %s", widgetType)
 	}
-	return creator(config, haProvider, dexcomProvider)
+	return creator(id, config, children, provider)
 }
 
 func (wr *WidgetRegistry) GetSupportedTypes() []string {
@@ -125,68 +110,65 @@ func (wr *WidgetRegistry) GetSupportedTypes() []string {
 }
 
 type WidgetFactory interface {
-	Create(widgetType string, config map[string]interface{}) (Widget, error)
+	Create(widgetType string, id string, config map[string]interface{}, children []Widget) (Widget, error)
 	GetSupportedTypes() []string
 }
 
 type DefaultWidgetFactory struct {
-	haProvider     integrations.HAProvider
-	dexcomProvider integrations.DexcomProvider
-	registry       *WidgetRegistry
+	provider Provider
+	registry *WidgetRegistry
 }
 
-func NewDefaultWidgetFactory(haProvider integrations.HAProvider, dexcomProvider integrations.DexcomProvider) *DefaultWidgetFactory {
+func NewDefaultWidgetFactory(provider Provider) *DefaultWidgetFactory {
 	registry := NewWidgetRegistry()
 	registerBuiltinWidgets(registry)
-	
+
 	return &DefaultWidgetFactory{
-		haProvider:     haProvider,
-		dexcomProvider: dexcomProvider,
-		registry:       registry,
+		provider: provider,
+		registry: registry,
 	}
 }
 
 func registerBuiltinWidgets(registry *WidgetRegistry) {
-	registry.Register("home_assistant.entity", func(config map[string]interface{}, haProvider integrations.HAProvider, dexcomProvider integrations.DexcomProvider) (Widget, error) {
-		return CreateHAEntityWidget(config, haProvider)
+	registry.Register("home_assistant.entity", func(id string, config map[string]interface{}, children []Widget, provider Provider) (Widget, error) {
+		return CreateHAEntityWidget(id, config, children, provider)
 	})
-	
-	registry.Register("home_assistant.button", func(config map[string]interface{}, haProvider integrations.HAProvider, dexcomProvider integrations.DexcomProvider) (Widget, error) {
-		return CreateHAButtonWidget(config, haProvider)
+
+	registry.Register("home_assistant.button", func(id string, config map[string]interface{}, children []Widget, provider Provider) (Widget, error) {
+		return CreateHAButtonWidget(id, config, children, provider)
 	})
-	
-	registry.Register("home_assistant.switch", func(config map[string]interface{}, haProvider integrations.HAProvider, dexcomProvider integrations.DexcomProvider) (Widget, error) {
-		return CreateHASwitchWidget(config, haProvider)
+
+	registry.Register("home_assistant.switch", func(id string, config map[string]interface{}, children []Widget, provider Provider) (Widget, error) {
+		return CreateHASwitchWidget(id, config, children, provider)
 	})
-	
-	registry.Register("home_assistant.light", func(config map[string]interface{}, haProvider integrations.HAProvider, dexcomProvider integrations.DexcomProvider) (Widget, error) {
-		return CreateHALightWidget(config, haProvider)
+
+	registry.Register("home_assistant.light", func(id string, config map[string]interface{}, children []Widget, provider Provider) (Widget, error) {
+		return CreateHALightWidget(id, config, children, provider)
 	})
-	
-	registry.Register("dexcom", func(config map[string]interface{}, haProvider integrations.HAProvider, dexcomProvider integrations.DexcomProvider) (Widget, error) {
-		return CreateDexcomWidget(config, dexcomProvider)
+
+	registry.Register("dexcom", func(id string, config map[string]interface{}, children []Widget, provider Provider) (Widget, error) {
+		return CreateDexcomWidget(id, config, children, provider)
 	})
-	
-	registry.Register("clock", func(config map[string]interface{}, haProvider integrations.HAProvider, dexcomProvider integrations.DexcomProvider) (Widget, error) {
-		return CreateClockWidget(config)
+
+	registry.Register("clock", func(id string, config map[string]interface{}, children []Widget, provider Provider) (Widget, error) {
+		return CreateClockWidget(id, config, children)
 	})
-	
-	registry.Register("horizontal_split", func(config map[string]interface{}, haProvider integrations.HAProvider, dexcomProvider integrations.DexcomProvider) (Widget, error) {
-		return CreateHorizontalSplitWidget(config)
+
+	registry.Register("horizontal_split", func(id string, config map[string]interface{}, children []Widget, provider Provider) (Widget, error) {
+		return CreateHorizontalSplitWidget(id, config, children)
 	})
-	
-	registry.Register("vertical_split", func(config map[string]interface{}, haProvider integrations.HAProvider, dexcomProvider integrations.DexcomProvider) (Widget, error) {
-		return CreateVerticalSplitWidget(config)
+
+	registry.Register("vertical_split", func(id string, config map[string]interface{}, children []Widget, provider Provider) (Widget, error) {
+		return CreateVerticalSplitWidget(id, config, children)
 	})
-	
-	registry.Register("grow", func(config map[string]interface{}, haProvider integrations.HAProvider, dexcomProvider integrations.DexcomProvider) (Widget, error) {
-		return CreateGrowWidget(config)
+
+	registry.Register("grow", func(id string, config map[string]interface{}, children []Widget, provider Provider) (Widget, error) {
+		return CreateGrowWidget(id, config, children)
 	})
 }
 
-
-func (f *DefaultWidgetFactory) Create(widgetType string, config map[string]interface{}) (Widget, error) {
-	return f.registry.Create(widgetType, config, f.haProvider, f.dexcomProvider)
+func (f *DefaultWidgetFactory) Create(widgetType string, id string, config map[string]interface{}, children []Widget) (Widget, error) {
+	return f.registry.Create(widgetType, id, config, children, f.provider)
 }
 
 func (f *DefaultWidgetFactory) GetSupportedTypes() []string {
@@ -205,14 +187,12 @@ func NewWidgetManager(factory WidgetFactory) *WidgetManager {
 	}
 }
 
-func (wm *WidgetManager) CreateWidget(id string, widgetType string, config map[string]interface{}) error {
-	widget, err := wm.factory.Create(widgetType, config)
+func (wm *WidgetManager) CreateWidget(id string, widgetType string, config map[string]interface{}, children []Widget) error {
+	widget, err := wm.factory.Create(widgetType, id, config, children)
 	if err != nil {
 		return fmt.Errorf("failed to create widget %s: %w", id, err)
 	}
-	
-	widget.SetID(id)
-	
+
 	wm.widgets[id] = widget
 	return nil
 }
@@ -226,20 +206,19 @@ func (wm *WidgetManager) GetAllWidgets() map[string]Widget {
 	return wm.widgets
 }
 
-func (wm *WidgetManager) RemoveWidget(id string) {
-	delete(wm.widgets, id)
+func (wm *WidgetManager) StoreWidget(id string, widget Widget) {
+	wm.widgets[id] = widget
 }
 
-func (wm *WidgetManager) UpdateAll(ctx context.Context) error {
-	for id, widget := range wm.widgets {
-		// Only update widgets that need updating (reactive updates)
-		if widget.ShouldUpdate() {
-			if err := widget.Update(ctx); err != nil {
-				return fmt.Errorf("failed to update widget %s: %w", id, err)
-			}
-		}
+func (wm *WidgetManager) GetFactory() WidgetFactory {
+	return wm.factory
+}
+
+func (wm *WidgetManager) RemoveWidget(id string) {
+	if widget, exists := wm.widgets[id]; exists {
+		widget.Close()
+		delete(wm.widgets, id)
 	}
-	return nil
 }
 
 type GrowWidget struct {
@@ -247,7 +226,7 @@ type GrowWidget struct {
 	GrowValue string
 }
 
-func CreateGrowWidget(config map[string]interface{}) (Widget, error) {
+func CreateGrowWidget(id string, config map[string]interface{}, children []Widget) (Widget, error) {
 	// Parse grow value from config, default to "1"
 	growValue := "1"
 	if val, ok := config["grow"].(string); ok {
@@ -260,22 +239,21 @@ func CreateGrowWidget(config map[string]interface{}) (Widget, error) {
 
 	widget := &GrowWidget{
 		BaseWidget: &BaseWidget{
-			ID:       generateWidgetID(),
+			ID:       id,
 			Type:     "grow",
 			Config:   config,
-			Children: []Widget{},
+			Children: children,
 		},
 		GrowValue: growValue,
 	}
-	
+
 	return widget, nil
 }
 
-func (w *GrowWidget) Update(ctx context.Context) error {
+func (w *GrowWidget) Init(ctx context.Context) error {
 	w.Data = map[string]interface{}{
 		"type":       w.Type,
 		"grow_value": w.GrowValue,
-		"children":   w.Children,
 	}
 	w.LastUpdate = time.Now()
 	return nil
@@ -286,5 +264,19 @@ func (w *GrowWidget) GetGrowValue() string {
 }
 
 func (w *GrowWidget) IsContainer() bool {
-	return true  // Grow widgets can always contain children
+	return true // Grow widgets can always contain children
+}
+
+func (w *GrowWidget) SetChildren(children []Widget) {
+	w.Children = children
+	// Update data timestamp when children are set
+	w.Data = map[string]interface{}{
+		"type":       w.Type,
+		"grow_value": w.GrowValue,
+	}
+	w.LastUpdate = time.Now()
+}
+
+func (w *GrowWidget) Close() error {
+	return nil
 }

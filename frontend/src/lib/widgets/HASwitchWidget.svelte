@@ -1,6 +1,6 @@
 <script lang="ts">
     import type { WidgetData, HAEntityData } from "../types";
-    import { DashboardAppService } from "../../../bindings/github.com/mntndev/dash";
+    import { DashboardService } from "../../../bindings/github.com/mntndev/dash/pkg/dashboard";
 
     let { widget }: { widget: WidgetData } = $props();
 
@@ -11,13 +11,20 @@
         entityData?.entity_id?.split(".")[1]?.replace(/_/g, " ") || "Unknown"
     );
     let isOn = $derived(entityData?.state === "on");
+    
+    // Log any changes in entityData
+    $effect(() => {
+        if (entityData) {
+            console.log(`[HA Switch] ${entityData.entity_id} data updated:`, entityData);
+        }
+    });
 
     async function toggleSwitch() {
         if (isLoading) return;
 
         isLoading = true;
         try {
-            await DashboardAppService.TriggerWidget(widget.id);
+            await DashboardService.TriggerWidget(widget.id);
         } catch (error) {
             console.error("Failed to toggle switch:", error);
         } finally {

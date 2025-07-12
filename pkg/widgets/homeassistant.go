@@ -3,15 +3,20 @@ package widgets
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/mntndev/dash/pkg/integrations"
 )
 
+
 type HABaseWidget struct {
 	*BaseWidget
-	EntityID string
-	haProvider integrations.HAProvider
+	EntityID     string
+	haProvider   integrations.HAProvider
+	provider     Provider
+	subscription <-chan integrations.StateChangeEvent
+	cancelSub    context.CancelFunc
 }
 
 type HAEntityWidget struct {
@@ -20,8 +25,8 @@ type HAEntityWidget struct {
 
 type HAButtonWidget struct {
 	*HABaseWidget
-	Service  string
-	Domain   string
+	Service string
+	Domain  string
 }
 
 type HASwitchWidget struct {
@@ -40,6 +45,17 @@ type HAEntityData struct {
 	LastUpdated time.Time              `json:"last_updated"`
 }
 
+func (hab *HABaseWidget) setDataAndEmit(data interface{}) {
+	hab.Data = data
+	hab.LastUpdate = time.Now()
+	if hab.provider != nil {
+		hab.provider.Emit("widget_data_update", map[string]interface{}{
+			"widget_id": hab.ID,
+			"data":      data,
+		})
+	}
+}
+
 type HAButtonData struct {
 	EntityID string `json:"entity_id"`
 	Service  string `json:"service"`
@@ -47,33 +63,123 @@ type HAButtonData struct {
 	Label    string `json:"label"`
 }
 
-func (hab *HABaseWidget) fetchEntityState() (*HAEntityData, error) {
+func (hab *HABaseWidget) startSubscription(ctx context.Context) error {
 	haClient := hab.haProvider.GetHAClient()
 	if haClient == nil || !haClient.IsConnected() {
-		return nil, fmt.Errorf("Home Assistant client not connected")
+		// HA client not connected yet, start a goroutine to wait for connection
+		go hab.waitForConnectionAndSubscribe(ctx)
+		return nil
+	}
+
+	return hab.setupSubscription(ctx)
+}
+
+func (hab *HABaseWidget) waitForConnectionAndSubscribe(ctx context.Context) {
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			haClient := hab.haProvider.GetHAClient()
+			if haClient != nil && haClient.IsConnected() {
+				if err := hab.setupSubscription(ctx); err != nil {
+					// Log error but don't fail - widget can try again
+					fmt.Printf("Failed to setup HA subscription for %s: %v\n", hab.EntityID, err)
+				} else {
+					fmt.Printf("HA widget %s successfully connected and subscribed\n", hab.EntityID)
+				}
+				return
+			}
+		}
+	}
+}
+
+func (hab *HABaseWidget) setupSubscription(ctx context.Context) error {
+	haClient := hab.haProvider.GetHAClient()
+	if haClient == nil || !haClient.IsConnected() {
+		return fmt.Errorf("Home Assistant client not connected")
+	}
+
+	subscription, err := haClient.Subscribe(hab.EntityID)
+	if err != nil {
+		return fmt.Errorf("failed to subscribe to entity %s: %w", hab.EntityID, err)
+	}
+
+	hab.subscription = subscription
+
+	ctx, cancel := context.WithCancel(ctx)
+	hab.cancelSub = cancel
+
+	go hab.processStateChanges(ctx)
+
+	return hab.fetchInitialState()
+}
+
+func (hab *HABaseWidget) processStateChanges(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case event := <-hab.subscription:
+			log.Printf("%v", event)
+			if event.NewState != nil {
+				data := &HAEntityData{
+					EntityID:    event.NewState.EntityID,
+					State:       event.NewState.State,
+					Attributes:  event.NewState.Attributes,
+					LastChanged: event.NewState.LastChanged,
+					LastUpdated: event.NewState.LastUpdated,
+				}
+				hab.setDataAndEmit(data)
+			}
+		}
+	}
+}
+
+func (hab *HABaseWidget) fetchInitialState() error {
+	haClient := hab.haProvider.GetHAClient()
+	if haClient == nil || !haClient.IsConnected() {
+		return fmt.Errorf("Home Assistant client not connected")
 	}
 
 	states, err := haClient.GetStates()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get states: %w", err)
+		return fmt.Errorf("failed to get states: %w", err)
 	}
 
 	for _, state := range states {
 		if state.EntityID == hab.EntityID {
-			return &HAEntityData{
+			data := &HAEntityData{
 				EntityID:    state.EntityID,
 				State:       state.State,
 				Attributes:  state.Attributes,
 				LastChanged: state.LastChanged,
 				LastUpdated: state.LastUpdated,
-			}, nil
+			}
+			hab.setDataAndEmit(data)
+			return nil
 		}
 	}
 
-	return nil, fmt.Errorf("entity %s not found", hab.EntityID)
+	return fmt.Errorf("entity %s not found", hab.EntityID)
 }
 
-func CreateHAEntityWidget(config map[string]interface{}, haProvider integrations.HAProvider) (Widget, error) {
+func (hab *HABaseWidget) stopSubscription() {
+	if hab.cancelSub != nil {
+		hab.cancelSub()
+	}
+	if hab.subscription != nil {
+		haClient := hab.haProvider.GetHAClient()
+		if haClient != nil {
+			haClient.Unsubscribe(hab.EntityID, hab.subscription)
+		}
+	}
+}
+
+func CreateHAEntityWidget(id string, config map[string]interface{}, children []Widget, provider Provider) (Widget, error) {
 	var haConfig HAEntityConfig
 	parser := NewConfigParser()
 	if err := parser.ParseConfig(config, &haConfig); err != nil {
@@ -83,19 +189,21 @@ func CreateHAEntityWidget(config map[string]interface{}, haProvider integrations
 	widget := &HAEntityWidget{
 		HABaseWidget: &HABaseWidget{
 			BaseWidget: &BaseWidget{
-				ID:       generateWidgetID(),
+				ID:       id,
 				Type:     "home_assistant.entity",
 				Config:   config,
+				Children: children,
 			},
-			EntityID: haConfig.EntityID,
-			haProvider: haProvider,
+			EntityID:   haConfig.EntityID,
+			haProvider: provider,
+			provider:   provider,
 		},
 	}
 
 	return widget, nil
 }
 
-func CreateHASwitchWidget(config map[string]interface{}, haProvider integrations.HAProvider) (Widget, error) {
+func CreateHASwitchWidget(id string, config map[string]interface{}, children []Widget, provider Provider) (Widget, error) {
 	var haConfig HAEntityConfig
 	parser := NewConfigParser()
 	if err := parser.ParseConfig(config, &haConfig); err != nil {
@@ -105,19 +213,21 @@ func CreateHASwitchWidget(config map[string]interface{}, haProvider integrations
 	widget := &HASwitchWidget{
 		HABaseWidget: &HABaseWidget{
 			BaseWidget: &BaseWidget{
-				ID:       generateWidgetID(),
+				ID:       id,
 				Type:     "home_assistant.switch",
 				Config:   config,
+				Children: children,
 			},
-			EntityID: haConfig.EntityID,
-			haProvider: haProvider,
+			EntityID:   haConfig.EntityID,
+			haProvider: provider,
+			provider:   provider,
 		},
 	}
 
 	return widget, nil
 }
 
-func CreateHALightWidget(config map[string]interface{}, haProvider integrations.HAProvider) (Widget, error) {
+func CreateHALightWidget(id string, config map[string]interface{}, children []Widget, provider Provider) (Widget, error) {
 	var haConfig HAEntityConfig
 	parser := NewConfigParser()
 	if err := parser.ParseConfig(config, &haConfig); err != nil {
@@ -127,19 +237,21 @@ func CreateHALightWidget(config map[string]interface{}, haProvider integrations.
 	widget := &HALightWidget{
 		HABaseWidget: &HABaseWidget{
 			BaseWidget: &BaseWidget{
-				ID:       generateWidgetID(),
+				ID:       id,
 				Type:     "home_assistant.light",
 				Config:   config,
+				Children: children,
 			},
-			EntityID: haConfig.EntityID,
-			haProvider: haProvider,
+			EntityID:   haConfig.EntityID,
+			haProvider: provider,
+			provider:   provider,
 		},
 	}
 
 	return widget, nil
 }
 
-func CreateHAButtonWidget(config map[string]interface{}, haProvider integrations.HAProvider) (Widget, error) {
+func CreateHAButtonWidget(id string, config map[string]interface{}, children []Widget, provider Provider) (Widget, error) {
 	var buttonConfig HAButtonConfig
 	parser := NewConfigParser()
 	if err := parser.ParseConfig(config, &buttonConfig); err != nil {
@@ -149,15 +261,17 @@ func CreateHAButtonWidget(config map[string]interface{}, haProvider integrations
 	widget := &HAButtonWidget{
 		HABaseWidget: &HABaseWidget{
 			BaseWidget: &BaseWidget{
-				ID:       generateWidgetID(),
+				ID:       id,
 				Type:     "home_assistant.button",
 				Config:   config,
+				Children: children,
 			},
-			EntityID: buttonConfig.EntityID,
-			haProvider: haProvider,
+			EntityID:   buttonConfig.EntityID,
+			haProvider: provider,
+			provider:   provider,
 		},
-		Service:  buttonConfig.Service,
-		Domain:   buttonConfig.Domain,
+		Service: buttonConfig.Service,
+		Domain:  buttonConfig.Domain,
 	}
 
 	widget.Data = &HAButtonData{
@@ -170,41 +284,81 @@ func CreateHAButtonWidget(config map[string]interface{}, haProvider integrations
 	return widget, nil
 }
 
-func (w *HAEntityWidget) Update(ctx context.Context) error {
-	entityData, err := w.HABaseWidget.fetchEntityState()
-	if err != nil {
-		return err
+func (w *HAEntityWidget) Init(ctx context.Context) error {
+	w.LastUpdate = time.Now()
+	// Initialize with empty data to avoid null
+	w.Data = &HAEntityData{
+		EntityID:    w.EntityID,
+		State:       "unknown",
+		Attributes:  make(map[string]interface{}),
+		LastChanged: time.Now(),
+		LastUpdated: time.Now(),
 	}
-	w.Data = entityData
-	w.LastUpdate = time.Now()
+
+	// Try to fetch initial state asynchronously with a short delay to avoid blocking
+	go func() {
+		time.Sleep(100 * time.Millisecond) // Brief delay to let HA client fully initialize
+		if err := w.HABaseWidget.fetchInitialState(); err != nil {
+			fmt.Printf("Failed to fetch initial state for %s: %v\n", w.EntityID, err)
+		}
+	}()
+
+	// Start subscription asynchronously to avoid blocking widget initialization
+	go w.HABaseWidget.startSubscription(ctx)
 	return nil
 }
 
-func (w *HASwitchWidget) Update(ctx context.Context) error {
-	entityData, err := w.HABaseWidget.fetchEntityState()
-	if err != nil {
-		return err
+func (w *HASwitchWidget) Init(ctx context.Context) error {
+	w.LastUpdate = time.Now()
+	// Initialize with empty data to avoid null
+	w.Data = &HAEntityData{
+		EntityID:    w.EntityID,
+		State:       "unknown",
+		Attributes:  make(map[string]interface{}),
+		LastChanged: time.Now(),
+		LastUpdated: time.Now(),
 	}
-	w.Data = entityData
-	w.LastUpdate = time.Now()
+
+	// Try to fetch initial state asynchronously with a short delay to avoid blocking
+	go func() {
+		time.Sleep(100 * time.Millisecond) // Brief delay to let HA client fully initialize
+		if err := w.HABaseWidget.fetchInitialState(); err != nil {
+			fmt.Printf("Failed to fetch initial state for %s: %v\n", w.EntityID, err)
+		}
+	}()
+	// Start subscription asynchronously to avoid blocking widget initialization
+	go w.HABaseWidget.startSubscription(ctx)
 	return nil
 }
 
-func (w *HALightWidget) Update(ctx context.Context) error {
-	entityData, err := w.HABaseWidget.fetchEntityState()
-	if err != nil {
-		return err
+func (w *HALightWidget) Init(ctx context.Context) error {
+	w.LastUpdate = time.Now()
+	// Initialize with empty data to avoid null
+	w.Data = &HAEntityData{
+		EntityID:    w.EntityID,
+		State:       "unknown",
+		Attributes:  make(map[string]interface{}),
+		LastChanged: time.Now(),
+		LastUpdated: time.Now(),
 	}
-	w.Data = entityData
-	w.LastUpdate = time.Now()
+
+	// Try to fetch initial state asynchronously with a short delay to avoid blocking
+	go func() {
+		time.Sleep(100 * time.Millisecond) // Brief delay to let HA client fully initialize
+		if err := w.HABaseWidget.fetchInitialState(); err != nil {
+			fmt.Printf("Failed to fetch initial state for %s: %v\n", w.EntityID, err)
+		}
+	}()
+
+	// Start subscription asynchronously to avoid blocking widget initialization
+	go w.HABaseWidget.startSubscription(ctx)
 	return nil
 }
 
-func (w *HAButtonWidget) Update(ctx context.Context) error {
+func (w *HAButtonWidget) Init(ctx context.Context) error {
 	w.LastUpdate = time.Now()
 	return nil
 }
-
 
 func (w *HASwitchWidget) Trigger() error {
 	haClient := w.HABaseWidget.haProvider.GetHAClient()
@@ -259,7 +413,21 @@ func (w *HAButtonWidget) Trigger() error {
 	return haClient.CallService(w.Domain, w.Service, serviceData)
 }
 
-func generateWidgetID() string {
-	return fmt.Sprintf("widget_%d", time.Now().UnixNano())
+func (w *HAEntityWidget) Close() error {
+	w.HABaseWidget.stopSubscription()
+	return nil
 }
 
+func (w *HASwitchWidget) Close() error {
+	w.HABaseWidget.stopSubscription()
+	return nil
+}
+
+func (w *HALightWidget) Close() error {
+	w.HABaseWidget.stopSubscription()
+	return nil
+}
+
+func (w *HAButtonWidget) Close() error {
+	return nil
+}

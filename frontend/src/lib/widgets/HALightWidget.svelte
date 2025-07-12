@@ -1,6 +1,6 @@
 <script lang="ts">
     import type { WidgetData, HAEntityData } from "../types";
-    import { DashboardAppService } from "../../../bindings/github.com/mntndev/dash";
+    import { DashboardService } from "../../../bindings/github.com/mntndev/dash/pkg/dashboard";
     import { getWidgetData } from "../stores.svelte";
 
     let { widget }: { widget: WidgetData } = $props();
@@ -24,6 +24,13 @@
     let brightnessPercent = $derived(
         Math.round((brightness / maxBrightness) * 100),
     );
+    
+    // Log any changes in entityData
+    $effect(() => {
+        if (entityData) {
+            console.log(`[HA Light] ${entityData.entity_id} data updated:`, entityData);
+        }
+    });
 
     // Effect to initialize and update local brightness
     $effect(() => {
@@ -56,7 +63,7 @@
 
         isLoading = true;
         try {
-            await DashboardAppService.TriggerWidget(widget.id);
+            await DashboardService.TriggerWidget(widget.id);
         } catch (error) {
             console.error("Failed to toggle light:", error);
         } finally {
@@ -99,7 +106,7 @@
 
         isLoading = true;
         try {
-            await DashboardAppService.SetLightBrightness(
+            await DashboardService.SetLightBrightness(
                 widget.id,
                 newBrightness,
             );

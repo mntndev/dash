@@ -31,14 +31,15 @@ type DexcomReading struct {
 	Timestamp time.Time `json:"timestamp"`
 }
 
-func CreateDexcomWidget(config map[string]interface{}, dexcomProvider integrations.DexcomProvider) (Widget, error) {
+func CreateDexcomWidget(id string, config map[string]interface{}, children []Widget, provider Provider) (Widget, error) {
 	widget := &DexcomWidget{
 		BaseWidget: &BaseWidget{
-			ID:     generateWidgetID(),
-			Type:   "dexcom",
-			Config: config,
+			ID:       id,
+			Type:     "dexcom",
+			Config:   config,
+			Children: children,
 		},
-		dexcomProvider: dexcomProvider,
+		dexcomProvider: provider,
 	}
 
 	return widget, nil
@@ -64,7 +65,56 @@ func (w *DexcomWidget) getHighThreshold() int {
 	return 160 // default
 }
 
-func (w *DexcomWidget) Update(ctx context.Context) error {
+func (w *DexcomWidget) Init(ctx context.Context) error {
+	w.LastUpdate = time.Now()
+	
+	dexcomClient := w.dexcomProvider.GetDexcomClient()
+	if dexcomClient == nil || !dexcomClient.IsConnected() {
+		// Dexcom client not connected yet, start a goroutine to wait for connection
+		go w.waitForConnectionAndUpdate(ctx)
+		return nil
+	}
+	
+	// Start data update asynchronously to avoid blocking widget initialization
+	go func() {
+		if err := w.updateData(); err != nil {
+			fmt.Printf("Failed to update Dexcom data during init: %v\n", err)
+		}
+	}()
+	
+	return nil
+}
+
+func (w *DexcomWidget) waitForConnectionAndUpdate(ctx context.Context) {
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+	
+	// Timeout after 30 seconds
+	timeout := time.NewTimer(30 * time.Second)
+	defer timeout.Stop()
+	
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-timeout.C:
+			fmt.Printf("Timeout waiting for Dexcom connection\n")
+			return
+		case <-ticker.C:
+			dexcomClient := w.dexcomProvider.GetDexcomClient()
+			if dexcomClient != nil && dexcomClient.IsConnected() {
+				if err := w.updateData(); err != nil {
+					fmt.Printf("Failed to update Dexcom data: %v\n", err)
+				} else {
+					fmt.Printf("Dexcom widget successfully connected and updated\n")
+				}
+				return
+			}
+		}
+	}
+}
+
+func (w *DexcomWidget) updateData() error {
 	dexcomClient := w.dexcomProvider.GetDexcomClient()
 	if dexcomClient == nil || !dexcomClient.IsConnected() {
 		return fmt.Errorf("Dexcom client not connected")
@@ -161,6 +211,10 @@ func parseDexcomTimestamp(dateStr string) time.Time {
 
 	// Convert to time.Time (Dexcom uses milliseconds since Unix epoch)
 	return time.Unix(milliseconds/1000, (milliseconds%1000)*1000000).UTC()
+}
+
+func (w *DexcomWidget) Close() error {
+	return nil
 }
 
 func formatTrendString(trend string) string {

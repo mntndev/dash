@@ -17,18 +17,19 @@ type HAProvider interface {
 }
 
 type HomeAssistantClient struct {
-	config       *config.HomeAssistantConfig
-	conn         *websocket.Conn
-	connected    bool
-	authenticated bool
-	msgID        int
-	callbacks    map[int]func(HAMessage)
-	mu           sync.RWMutex
-	writeMu      sync.Mutex
-	ctx          context.Context
-	cancel       context.CancelFunc
-	eventChan    chan HAEvent
-	authChan     chan bool
+	config            *config.HomeAssistantConfig
+	conn              *websocket.Conn
+	connected         bool
+	authenticated     bool
+	msgID             int
+	callbacks         map[int]func(HAMessage)
+	mu                sync.RWMutex
+	writeMu           sync.Mutex
+	ctx               context.Context
+	cancel            context.CancelFunc
+	eventChan         chan HAEvent
+	authChan          chan bool
+	*SubscriptionManager
 }
 
 type HAMessage struct {
@@ -61,9 +62,24 @@ type HAEntityState struct {
 	LastUpdated time.Time              `json:"last_updated"`
 }
 
+type StateChangeEvent struct {
+	EntityID string        `json:"entity_id"`
+	NewState *HAEntityState `json:"new_state"`
+	OldState *HAEntityState `json:"old_state"`
+}
+
+type SubscriptionManager struct {
+	haClient      *HomeAssistantClient
+	subscriptions map[string][]chan StateChangeEvent
+	subID         int
+	mu            sync.RWMutex
+	ctx           context.Context
+	cancel        context.CancelFunc
+}
+
 func NewHomeAssistantClient(config *config.HomeAssistantConfig) *HomeAssistantClient {
 	ctx, cancel := context.WithCancel(context.Background())
-	return &HomeAssistantClient{
+	client := &HomeAssistantClient{
 		config:    config,
 		callbacks: make(map[int]func(HAMessage)),
 		ctx:       ctx,
@@ -71,6 +87,8 @@ func NewHomeAssistantClient(config *config.HomeAssistantConfig) *HomeAssistantCl
 		eventChan: make(chan HAEvent, 100),
 		authChan:  make(chan bool, 1),
 	}
+	client.SubscriptionManager = NewSubscriptionManager(client)
+	return client
 }
 
 func (ha *HomeAssistantClient) Connect() error {
@@ -315,6 +333,9 @@ func (ha *HomeAssistantClient) GetEventChannel() <-chan HAEvent {
 
 func (ha *HomeAssistantClient) Close() error {
 	ha.cancel()
+	if ha.SubscriptionManager != nil {
+		ha.SubscriptionManager.Close()
+	}
 	if ha.conn != nil {
 		return ha.conn.Close()
 	}
@@ -325,4 +346,123 @@ func (ha *HomeAssistantClient) IsConnected() bool {
 	ha.mu.RLock()
 	defer ha.mu.RUnlock()
 	return ha.connected && ha.authenticated
+}
+
+func NewSubscriptionManager(haClient *HomeAssistantClient) *SubscriptionManager {
+	ctx, cancel := context.WithCancel(context.Background())
+	sm := &SubscriptionManager{
+		haClient:      haClient,
+		subscriptions: make(map[string][]chan StateChangeEvent),
+		ctx:           ctx,
+		cancel:        cancel,
+	}
+	go sm.eventProcessor()
+	return sm
+}
+
+func (sm *SubscriptionManager) Subscribe(entityID string) (<-chan StateChangeEvent, error) {
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+
+	ch := make(chan StateChangeEvent, 10)
+	
+	if _, exists := sm.subscriptions[entityID]; !exists {
+		if err := sm.haClient.SubscribeEvents("state_changed"); err != nil {
+			close(ch)
+			return nil, fmt.Errorf("failed to subscribe to state_changed events: %w", err)
+		}
+	}
+	
+	sm.subscriptions[entityID] = append(sm.subscriptions[entityID], ch)
+	return ch, nil
+}
+
+func (sm *SubscriptionManager) Unsubscribe(entityID string, ch <-chan StateChangeEvent) {
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+
+	if subs, exists := sm.subscriptions[entityID]; exists {
+		for i, sub := range subs {
+			if sub == ch {
+				close(sub)
+				sm.subscriptions[entityID] = append(subs[:i], subs[i+1:]...)
+				break
+			}
+		}
+		
+		if len(sm.subscriptions[entityID]) == 0 {
+			delete(sm.subscriptions, entityID)
+		}
+	}
+}
+
+func (sm *SubscriptionManager) eventProcessor() {
+	eventChan := sm.haClient.GetEventChannel()
+	
+	for {
+		select {
+		case <-sm.ctx.Done():
+			sm.closeAllSubscriptions()
+			return
+		case event := <-eventChan:
+			if event.EventType == "state_changed" {
+				sm.processStateChangeEvent(event)
+			}
+		}
+	}
+}
+
+func (sm *SubscriptionManager) processStateChangeEvent(event HAEvent) {
+	data := event.Data
+	entityID, ok := data["entity_id"].(string)
+	if !ok {
+		return
+	}
+
+	var newState, oldState *HAEntityState
+	
+	if newStateData, ok := data["new_state"]; ok && newStateData != nil {
+		newStateBytes, _ := json.Marshal(newStateData)
+		newState = &HAEntityState{}
+		json.Unmarshal(newStateBytes, newState)
+	}
+	
+	if oldStateData, ok := data["old_state"]; ok && oldStateData != nil {
+		oldStateBytes, _ := json.Marshal(oldStateData)
+		oldState = &HAEntityState{}
+		json.Unmarshal(oldStateBytes, oldState)
+	}
+
+	stateEvent := StateChangeEvent{
+		EntityID: entityID,
+		NewState: newState,
+		OldState: oldState,
+	}
+
+	sm.mu.RLock()
+	subscribers := sm.subscriptions[entityID]
+	sm.mu.RUnlock()
+
+	for _, ch := range subscribers {
+		select {
+		case ch <- stateEvent:
+		default:
+		}
+	}
+}
+
+func (sm *SubscriptionManager) closeAllSubscriptions() {
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+	
+	for entityID, subs := range sm.subscriptions {
+		for _, ch := range subs {
+			close(ch)
+		}
+		delete(sm.subscriptions, entityID)
+	}
+}
+
+func (sm *SubscriptionManager) Close() {
+	sm.cancel()
 }

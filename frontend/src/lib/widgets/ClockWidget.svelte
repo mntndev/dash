@@ -1,9 +1,9 @@
 <script lang="ts">
-  import type { WidgetData, ClockData } from '../types';
+  import type { Widget as WidgetType, ClockData } from '../types';
 
-  let { widget }: { widget: WidgetData } = $props();
+  let { widget }: { widget: WidgetType } = $props();
   
-  let clockData = $derived(widget.data as ClockData);
+  let clockData = $derived(widget.Data as ClockData);
   let displayTime = $derived(clockData?.display || new Date().toLocaleTimeString());
 </script>
 

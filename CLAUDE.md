@@ -54,3 +54,7 @@ This is a **Wails v3** desktop application combining:
 
 - Frontend: `cd frontend && npm run check` for Svelte type checking
 - No test runner currently configured - add tests as needed
+
+### Logging and Debugging
+
+- I will run dev tools or the application itself. If you want to see logs from backend or frontend, just ask.

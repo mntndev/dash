@@ -1,6 +1,6 @@
 <script lang="ts">
     import type { WidgetData, HAButtonData } from "../types";
-    import { DashboardAppService } from "../../../bindings/github.com/mntndev/dash";
+    import { DashboardService } from "../../../bindings/github.com/mntndev/dash/pkg/dashboard";
     let { widget }: { widget: WidgetData } = $props();
 
     let isLoading = false;
@@ -14,7 +14,7 @@
 
         isLoading = true;
         try {
-            await DashboardAppService.TriggerWidget(widget.id);
+            await DashboardService.TriggerWidget(widget.id);
             lastTriggered = new Date().toLocaleTimeString();
         } catch (error) {
             console.error("Failed to trigger widget:", error);

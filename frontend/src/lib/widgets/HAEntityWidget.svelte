@@ -6,6 +6,13 @@
   let entityData = $derived(widget.data as HAEntityData);
   let entityName = $derived(entityData?.entity_id?.split('.')[1]?.replace(/_/g, ' ') || 'Unknown');
   let lastUpdated = $derived(entityData?.last_updated ? new Date(entityData.last_updated).toLocaleString() : 'Never');
+  
+  // Log any changes in entityData
+  $effect(() => {
+    if (entityData) {
+      console.log(`[HA Entity] ${entityData.entity_id} data updated:`, entityData);
+    }
+  });
 </script>
 
 <div class="p-4 flex flex-col flex-none">

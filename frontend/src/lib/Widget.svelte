@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { WidgetData } from './types';
+  import type { WidgetTreeNode, WidgetData, Widget } from './types';
   import ClockWidget from './widgets/ClockWidget.svelte';
   import HAEntityWidget from './widgets/HAEntityWidget.svelte';
   import HAButtonWidget from './widgets/HAButtonWidget.svelte';
@@ -10,7 +10,25 @@
   import VerticalSplitWidget from './widgets/VerticalSplitWidget.svelte';
   import GrowWidget from './widgets/GrowWidget.svelte';
 
-  let { widget }: { widget: WidgetData } = $props();
+  // Accept the new Widget structure or legacy formats for backward compatibility
+  let { widgetTreeNode, widget }: { widgetTreeNode?: WidgetTreeNode, widget?: Widget | WidgetData } = $props();
+
+  // Use the widget directly if it's the new format, otherwise convert from legacy formats
+  let currentWidget = $derived(
+    widget || (widgetTreeNode ? {
+      ID: widgetTreeNode.id,
+      Type: widgetTreeNode.type,
+      Data: null,
+      LastUpdate: new Date().toISOString(),
+      Children: widgetTreeNode.children?.map(child => ({
+        ID: child.id,
+        Type: child.type,
+        Data: null,
+        LastUpdate: new Date().toISOString(),
+        Children: []
+      }))
+    } : null)
+  );
 
   const widgets: Record<string, any> = {
     'clock': ClockWidget,
@@ -24,19 +42,40 @@
     'grow': GrowWidget
   };
 
-  let component = $derived(widgets[widget.type]);
+  let component = $derived(currentWidget ? widgets[currentWidget.Type] : null);
   
-  // Extract stable widget identity from changing data
-  let widgetId = $derived(widget.id);
-  let widgetType = $derived(widget.type);
+  // Debug log for all widgets
+  $effect(() => {
+    console.log('[Widget Debug]', {
+      currentWidget,
+      hasWidget: !!currentWidget,
+      widgetType: currentWidget?.Type,
+      component: !!component
+    });
+  });
+  
+  // Debug log for container widgets
+  $effect(() => {
+    if (currentWidget && currentWidget.Type && (currentWidget.Type.includes('split') || currentWidget.Type === 'grow')) {
+      console.log(`[Container Widget] ${currentWidget.ID} (${currentWidget.Type}):`, {
+        hasChildren: !!currentWidget.Children?.length,
+        childrenCount: currentWidget.Children?.length || 0,
+        widget: currentWidget
+      });
+    }
+  });
 </script>
 
-{#if component}
-  {#key `${widgetId}-${widgetType}`}
-    <svelte:component this={component} {widget} />
+{#if component && currentWidget}
+  {#key `${currentWidget.ID}-${currentWidget.Type}`}
+    <svelte:component this={component} widget={currentWidget} />
   {/key}
+{:else if currentWidget}
+  <div class="flex items-center justify-center h-full text-gray-500 italic">
+    <p>Unknown widget type: {currentWidget.Type}</p>
+  </div>
 {:else}
   <div class="flex items-center justify-center h-full text-gray-500 italic">
-    <p>Unknown widget type: {widget.type}</p>
+    <p>No widget provided</p>
   </div>
 {/if}

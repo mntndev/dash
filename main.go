@@ -6,6 +6,8 @@ import (
 	"log"
 	"time"
 
+	"github.com/mntndev/dash/pkg/config"
+	"github.com/mntndev/dash/pkg/dashboard"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
@@ -24,8 +26,8 @@ func main() {
 		},
 	})
 
-	dashService := NewDashboardAppService(app)
-
+	// Create and register the dashboard service
+	dashService := dashboard.NewDashboardService(app)
 	app.RegisterService(application.NewService(dashService))
 
 	log.Println("Creating window...")
@@ -34,8 +36,17 @@ func main() {
 
 	window.SetTitle("Dash - Dashboard")
 
+	// For window configuration, we'll need to load config directly here
+	// since service methods now require context and are not available at this point
+	configPath := config.GetDefaultConfigPath()
+	cfg, err := config.LoadConfig(configPath)
+	if err != nil {
+		log.Printf("Failed to load config for window setup: %v. Using defaults.", err)
+		cfg = getDefaultConfig()
+	}
+
 	// Check if fullscreen is enabled in config
-	if dashService.IsFullscreenEnabled() {
+	if cfg.Dashboard.Fullscreen {
 		log.Println("Fullscreen mode enabled")
 		window.Fullscreen()
 	} else {
@@ -55,9 +66,25 @@ func main() {
 		}
 	}()
 
-	err := app.Run()
+	runErr := app.Run()
 
-	if err != nil {
-		log.Fatal(err)
+	if runErr != nil {
+		log.Fatal(runErr)
+	}
+}
+
+func getDefaultConfig() *config.Config {
+	return &config.Config{
+		Dashboard: config.DashboardConfig{
+			Title: "My Dashboard",
+			Theme: "dark",
+			Widget: config.WidgetConfig{
+				Type: "clock",
+				Config: map[string]interface{}{
+					"format": "15:04:05",
+				},
+			},
+		},
+		Integrations: config.IntegrationsConfig{},
 	}
 }
