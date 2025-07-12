@@ -244,9 +244,20 @@ func (wm *WidgetManager) UpdateAll(ctx context.Context) error {
 
 type GrowWidget struct {
 	*BaseWidget
+	GrowValue string
 }
 
 func CreateGrowWidget(config map[string]interface{}) (Widget, error) {
+	// Parse grow value from config, default to "1"
+	growValue := "1"
+	if val, ok := config["grow"].(string); ok {
+		growValue = val
+	} else if val, ok := config["grow"].(float64); ok {
+		growValue = fmt.Sprintf("%.0f", val)
+	} else if val, ok := config["grow"].(int); ok {
+		growValue = fmt.Sprintf("%d", val)
+	}
+
 	widget := &GrowWidget{
 		BaseWidget: &BaseWidget{
 			ID:       generateWidgetID(),
@@ -254,16 +265,26 @@ func CreateGrowWidget(config map[string]interface{}) (Widget, error) {
 			Config:   config,
 			Children: []Widget{},
 		},
+		GrowValue: growValue,
 	}
 	
 	return widget, nil
 }
 
 func (w *GrowWidget) Update(ctx context.Context) error {
+	w.Data = map[string]interface{}{
+		"type":       w.Type,
+		"grow_value": w.GrowValue,
+		"children":   w.Children,
+	}
 	w.LastUpdate = time.Now()
 	return nil
 }
 
+func (w *GrowWidget) GetGrowValue() string {
+	return w.GrowValue
+}
+
 func (w *GrowWidget) IsContainer() bool {
-	return len(w.Children) > 0
+	return true  // Grow widgets can always contain children
 }

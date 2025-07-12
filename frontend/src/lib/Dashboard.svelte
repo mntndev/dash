@@ -55,15 +55,16 @@
 
     <!-- Connection status banner - outside padding -->
     {#if appState.dashboardData}
-        <div class="h-1 w-full flex">
-            {#each Object.entries(appState.dashboardData.status) as [service, connected]}
-                <div 
-                    class="flex-1 transition-colors duration-300"
-                    class:bg-gray-200={connected} 
-                    class:bg-gray-500={!connected}
-                    title="{service}: {connected ? 'Connected' : 'Disconnected'}"
-                ></div>
-            {/each}
-        </div>
+        {@const disconnectedServices = Object.entries(appState.dashboardData.status).filter(([service, connected]) => !connected)}
+        {#if disconnectedServices.length > 0}
+            <div class="h-1 w-full flex">
+                {#each disconnectedServices as [service, connected]}
+                    <div 
+                        class="flex-1 transition-colors duration-300 bg-gray-500"
+                        title="{service}: Disconnected"
+                    ></div>
+                {/each}
+            </div>
+        {/if}
     {/if}
 </div>

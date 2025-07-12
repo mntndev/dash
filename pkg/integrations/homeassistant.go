@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/url"
 	"sync"
 	"time"
@@ -94,7 +93,6 @@ func (ha *HomeAssistantClient) Connect() error {
 		if !success {
 			return fmt.Errorf("authentication failed")
 		}
-		log.Println("Home Assistant authentication successful")
 		return nil
 	case <-time.After(10 * time.Second):
 		return fmt.Errorf("authentication timeout")
@@ -140,7 +138,6 @@ func (ha *HomeAssistantClient) readMessages() {
 		default:
 			var msg HAMessage
 			if err := ha.conn.ReadJSON(&msg); err != nil {
-					log.Printf("Error reading message: %v", err)
 				if !ha.authenticated {
 					select {
 					case ha.authChan <- false:
@@ -156,10 +153,8 @@ func (ha *HomeAssistantClient) readMessages() {
 }
 
 func (ha *HomeAssistantClient) handleMessage(msg HAMessage) {
-	log.Printf("Received message: type=%s, id=%d", msg.Type, msg.ID)
 	if msg.Type == "auth_required" {
 		if err := ha.authenticate(msg); err != nil {
-			log.Printf("Authentication error: %v", err)
 			select {
 			case ha.authChan <- false:
 			default:
@@ -180,7 +175,6 @@ func (ha *HomeAssistantClient) handleMessage(msg HAMessage) {
 	}
 
 	if msg.Type == "auth_invalid" {
-		log.Printf("Authentication invalid")
 		select {
 		case ha.authChan <- false:
 		default:
@@ -205,7 +199,7 @@ func (ha *HomeAssistantClient) handleMessage(msg HAMessage) {
 		select {
 		case ha.eventChan <- *msg.Event:
 		default:
-			log.Println("Event channel full, dropping event")
+			// Event channel full, drop event silently
 		}
 	}
 }
