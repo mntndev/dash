@@ -2,41 +2,18 @@
 export interface DashboardInfo {
   title: string;
   theme: string;
-  root_widget: Widget;
+  root_widget: WidgetType;
   status: Record<string, boolean>;
 }
 
 // Widget interface that matches the actual JSON serialization from Go  
-export interface Widget {
+export interface WidgetType {
   ID: string;
   Type: string;
-  Data: any;
   LastUpdate: string;
-  Children?: Widget[];
+  Children?: WidgetType[];
 }
 
-// Widget tree node (structure only, no data) - DEPRECATED
-export interface WidgetTreeNode {
-  id: string;
-  type: string;
-  children?: WidgetTreeNode[];
-}
-
-// Widget data (dynamic content) - DEPRECATED, use Widget instead
-export interface WidgetData {
-  id: string;
-  type: string;
-  data: any;
-  last_update: string;
-}
-
-// Legacy type for backward compatibility (will be removed)
-export interface DashboardData {
-  title: string;
-  theme: string;
-  widget: WidgetData & { children?: WidgetData[] };
-  status: Record<string, boolean>;
-}
 
 
 export interface HAEntityData {

@@ -1,18 +1,29 @@
 <script lang="ts">
-  import type { WidgetData, HAEntityData } from '../types';
+  import type { WidgetType, HAEntityData } from '../types';
+  import { Events } from '@wailsio/runtime';
+  import { onMount, onDestroy } from 'svelte';
 
-  let { widget }: { widget: WidgetData } = $props();
+  let { widget }: { widget: WidgetType } = $props();
   
-  let entityData = $derived(widget.data as HAEntityData);
+  let entityData = $state<HAEntityData | null>(null);
+
+  onMount(() => {
+    Events.On("widget_data_update", (event: any) => {
+      if (event.data && event.data.length > 0) {
+        const updateInfo = event.data[0];
+        if (updateInfo.widget_id === widget.ID && updateInfo.data) {
+          entityData = updateInfo.data as HAEntityData;
+        }
+      }
+    });
+  });
+
+  onDestroy(() => {
+    Events.Off("widget_data_update");
+  });
   let entityName = $derived(entityData?.entity_id?.split('.')[1]?.replace(/_/g, ' ') || 'Unknown');
   let lastUpdated = $derived(entityData?.last_updated ? new Date(entityData.last_updated).toLocaleString() : 'Never');
   
-  // Log any changes in entityData
-  $effect(() => {
-    if (entityData) {
-      console.log(`[HA Entity] ${entityData.entity_id} data updated:`, entityData);
-    }
-  });
 </script>
 
 <div class="p-4 flex flex-col flex-none">

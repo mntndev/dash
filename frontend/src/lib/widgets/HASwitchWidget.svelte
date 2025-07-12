@@ -1,12 +1,29 @@
 <script lang="ts">
-    import type { WidgetData, HAEntityData } from "../types";
+    import type { WidgetType, HAEntityData } from "../types";
     import { DashboardService } from "../../../bindings/github.com/mntndev/dash/pkg/dashboard";
+    import { Events } from '@wailsio/runtime';
+    import { onMount, onDestroy } from 'svelte';
 
-    let { widget }: { widget: WidgetData } = $props();
+    let { widget }: { widget: WidgetType } = $props();
 
-    let isLoading = false;
+    let isLoading = $state(false);
 
-    let entityData = $derived(widget.data as HAEntityData);
+    let entityData = $state<HAEntityData | null>(null);
+
+    onMount(() => {
+        Events.On("widget_data_update", (event: any) => {
+            if (event.data && event.data.length > 0) {
+                const updateInfo = event.data[0];
+                if (updateInfo.widget_id === widget.ID && updateInfo.data) {
+                    entityData = updateInfo.data as HAEntityData;
+                }
+            }
+        });
+    });
+
+    onDestroy(() => {
+        Events.Off("widget_data_update");
+    });
     let entityName = $derived(
         entityData?.entity_id?.split(".")[1]?.replace(/_/g, " ") || "Unknown"
     );
@@ -24,7 +41,7 @@
 
         isLoading = true;
         try {
-            await DashboardService.TriggerWidget(widget.id);
+            await DashboardService.TriggerWidget(widget.ID);
         } catch (error) {
             console.error("Failed to toggle switch:", error);
         } finally {

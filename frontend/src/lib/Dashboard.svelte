@@ -5,9 +5,7 @@
     import Widget from "./Widget.svelte";
     import { 
         appState, 
-        setDashboardInfo,
-        setWidgetData,
-        getAllWidgetIds
+        setDashboardInfo
     } from "./stores.svelte";
 
     async function loadDashboard() {
@@ -80,21 +78,10 @@
             }
         });
 
-        // Listen for widget-specific data updates
-        Events.On("widget_data_update", (event: any) => {
-            console.log("[Widget Data Update] Received:", event.data);
-            if (event.data && event.data.length > 0) {
-                const updateInfo = event.data[0];
-                if (updateInfo.widget_id && updateInfo.data) {
-                    setWidgetData(updateInfo.data);
-                }
-            }
-        });
     });
 
     onDestroy(() => {
         Events.Off("dashboard_info");
-        Events.Off("widget_data_update");
     });
 
 </script>

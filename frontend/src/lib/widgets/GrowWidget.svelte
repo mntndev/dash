@@ -1,12 +1,30 @@
 <script lang="ts">
-    import type { Widget as WidgetType } from "../types";
+    import type { WidgetType } from "../types";
     import Widget from "../Widget.svelte";
+    import { Events } from '@wailsio/runtime';
+    import { onMount, onDestroy } from 'svelte';
 
     let { widget }: { widget: WidgetType } = $props();
     
+    let growValue = $state("1");
+
+    onMount(() => {
+        Events.On("widget_data_update", (event: any) => {
+            if (event.data && event.data.length > 0) {
+                const updateInfo = event.data[0];
+                if (updateInfo.widget_id === widget.ID && updateInfo.data) {
+                    growValue = updateInfo.data?.grow_value || "1";
+                }
+            }
+        });
+    });
+
+    onDestroy(() => {
+        Events.Off("widget_data_update");
+    });
+    
     let children = $derived(widget.Children || []);
     let hasChild = $derived(children.length > 0);
-    let growValue = $derived(widget.Data?.grow_value || "1");
     let growStyle = $derived(`flex-grow: ${growValue};`);
 </script>
 

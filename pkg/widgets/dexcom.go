@@ -13,6 +13,7 @@ import (
 type DexcomWidget struct {
 	*BaseWidget
 	dexcomProvider integrations.DexcomProvider
+	provider       Provider
 }
 
 type DexcomData struct {
@@ -40,6 +41,7 @@ func CreateDexcomWidget(id string, config map[string]interface{}, children []Wid
 			Children: children,
 		},
 		dexcomProvider: provider,
+		provider:       provider,
 	}
 
 	return widget, nil
@@ -68,19 +70,9 @@ func (w *DexcomWidget) getHighThreshold() int {
 func (w *DexcomWidget) Init(ctx context.Context) error {
 	w.LastUpdate = time.Now()
 	
-	dexcomClient := w.dexcomProvider.GetDexcomClient()
-	if dexcomClient == nil || !dexcomClient.IsConnected() {
-		// Dexcom client not connected yet, start a goroutine to wait for connection
-		go w.waitForConnectionAndUpdate(ctx)
-		return nil
-	}
-	
-	// Start data update asynchronously to avoid blocking widget initialization
-	go func() {
-		if err := w.updateData(); err != nil {
-			fmt.Printf("Failed to update Dexcom data during init: %v\n", err)
-		}
-	}()
+	// Always start the connection check asynchronously to avoid any blocking
+	// during widget initialization
+	go w.waitForConnectionAndUpdate(ctx)
 	
 	return nil
 }
@@ -101,15 +93,24 @@ func (w *DexcomWidget) waitForConnectionAndUpdate(ctx context.Context) {
 			fmt.Printf("Timeout waiting for Dexcom connection\n")
 			return
 		case <-ticker.C:
-			dexcomClient := w.dexcomProvider.GetDexcomClient()
-			if dexcomClient != nil && dexcomClient.IsConnected() {
-				if err := w.updateData(); err != nil {
-					fmt.Printf("Failed to update Dexcom data: %v\n", err)
-				} else {
-					fmt.Printf("Dexcom widget successfully connected and updated\n")
+			// Use a timeout for potentially blocking provider calls
+			func() {
+				defer func() {
+					if r := recover(); r != nil {
+						fmt.Printf("Recovered from panic in Dexcom provider call: %v\n", r)
+					}
+				}()
+				
+				dexcomClient := w.dexcomProvider.GetDexcomClient()
+				if dexcomClient != nil && dexcomClient.IsConnected() {
+					if err := w.updateData(); err != nil {
+						fmt.Printf("Failed to update Dexcom data: %v\n", err)
+					} else {
+						fmt.Printf("Dexcom widget successfully connected and updated\n")
+					}
+					// Don't return here, keep checking for updates
 				}
-				return
-			}
+			}()
 		}
 	}
 }
@@ -163,7 +164,7 @@ func (w *DexcomWidget) updateData() error {
 		}
 	}
 
-	w.Data = &DexcomData{
+	data := &DexcomData{
 		Value:         latest.Value,
 		Trend:         trendString,
 		Timestamp:     timestamp,
@@ -172,8 +173,21 @@ func (w *DexcomWidget) updateData() error {
 		LowThreshold:  w.getLowThreshold(),
 		HighThreshold: w.getHighThreshold(),
 	}
+	
+	w.setDataAndEmit(data)
 	w.LastUpdate = lastUpdate
 	return nil
+}
+
+func (w *DexcomWidget) setDataAndEmit(data interface{}) {
+	w.Data = data
+	w.LastUpdate = time.Now()
+	if w.provider != nil {
+		w.provider.Emit("widget_data_update", map[string]interface{}{
+			"widget_id": w.ID,
+			"data":      data,
+		})
+	}
 }
 
 func parseDexcomTimestamp(dateStr string) time.Time {

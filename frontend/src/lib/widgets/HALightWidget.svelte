@@ -1,12 +1,10 @@
 <script lang="ts">
-    import type { WidgetData, HAEntityData } from "../types";
+    import type { WidgetType, HAEntityData } from "../types";
     import { DashboardService } from "../../../bindings/github.com/mntndev/dash/pkg/dashboard";
-    import { getWidgetData } from "../stores.svelte";
+    import { Events } from '@wailsio/runtime';
+    import { onMount, onDestroy } from 'svelte';
 
-    let { widget }: { widget: WidgetData } = $props();
-
-    // Get reactive widget data using runes
-    let currentWidget = $derived(getWidgetData(widget.id) || widget);
+    let { widget }: { widget: WidgetType } = $props();
 
     let isLoading = $state(false);
     let localBrightnessPercent = $state(0);
@@ -14,7 +12,22 @@
     let initialized = $state(false);
 
     // Derived values using runes
-    let entityData = $derived(currentWidget.data as HAEntityData);
+    let entityData = $state<HAEntityData | null>(null);
+
+    onMount(() => {
+        Events.On("widget_data_update", (event: any) => {
+            if (event.data && event.data.length > 0) {
+                const updateInfo = event.data[0];
+                if (updateInfo.widget_id === widget.ID && updateInfo.data) {
+                    entityData = updateInfo.data as HAEntityData;
+                }
+            }
+        });
+    });
+
+    onDestroy(() => {
+        Events.Off("widget_data_update");
+    });
     let entityName = $derived(
         entityData?.entity_id?.split(".")[1]?.replace(/_/g, " ") || "Unknown",
     );
@@ -63,7 +76,7 @@
 
         isLoading = true;
         try {
-            await DashboardService.TriggerWidget(widget.id);
+            await DashboardService.TriggerWidget(widget.ID);
         } catch (error) {
             console.error("Failed to toggle light:", error);
         } finally {
@@ -107,7 +120,7 @@
         isLoading = true;
         try {
             await DashboardService.SetLightBrightness(
-                widget.id,
+                widget.ID,
                 newBrightness,
             );
         } catch (error) {
@@ -172,7 +185,7 @@
                     <span class="text-gray-500">{localBrightnessPercent}%</span>
                 </div>
                 <input
-                    id={`brightness-${widget.id}`}
+                    id={`brightness-${widget.ID}`}
                     type="range"
                     min="1"
                     max="100"

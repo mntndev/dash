@@ -1,8 +1,9 @@
 <script lang="ts">
-    import type { WidgetData, DexcomData } from "../types";
-    import { getWidgetData } from "../stores.svelte";
+    import type { WidgetType, DexcomData } from "../types";
+    import { Events } from '@wailsio/runtime';
+    import { onMount, onDestroy } from 'svelte';
 
-    let { widget }: { widget: WidgetData } = $props();
+    let { widget }: { widget: WidgetType } = $props();
 
     // Constants
     const width = 400;
@@ -10,8 +11,22 @@
     const margin = { top: 5, right: 5, bottom: 20, left: 30 };
 
     // Basic reactive data
-    let currentWidget = $derived(getWidgetData(widget.id) || widget);
-    let glucoseData = $derived(currentWidget.data as DexcomData);
+    let glucoseData = $state<DexcomData | null>(null);
+
+    onMount(() => {
+        Events.On("widget_data_update", (event: any) => {
+            if (event.data && event.data.length > 0) {
+                const updateInfo = event.data[0];
+                if (updateInfo.widget_id === widget.ID && updateInfo.data) {
+                    glucoseData = updateInfo.data as DexcomData;
+                }
+            }
+        });
+    });
+
+    onDestroy(() => {
+        Events.Off("widget_data_update");
+    });
     let glucoseValue = $derived(glucoseData?.value || 0);
     let unit = $derived(glucoseData?.unit || "mg/dL");
     let timestamp = $derived(
@@ -27,6 +42,7 @@
 
     // Data processing
     let sortedData = $derived.by(() => {
+        if (!historicalData || historicalData.length === 0) return [];
         return [...historicalData]
             .filter((d) => d.value > 0)
             .sort(
@@ -138,7 +154,7 @@
 </script>
 
 <div class="flex flex-col flex-1 min-h-[200px]">
-    {#if historicalData && historicalData.length > 0}
+    {#if glucoseData && historicalData && historicalData.length > 0}
         <div class="w-full h-full min-h-[200px] max-h-[400px]">
             <svg
                 class="w-full h-full"
@@ -322,7 +338,7 @@
         >
             <div class="text-center">
                 <div class="text-lg mb-2">📊</div>
-                <div class="text-sm">Loading historical data...</div>
+                <div class="text-sm">{glucoseData ? 'No historical data available' : 'Waiting for glucose data...'}</div>
             </div>
         </div>
     {/if}

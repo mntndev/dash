@@ -1,12 +1,30 @@
 <script lang="ts">
-    import type { WidgetData, HAButtonData } from "../types";
+    import type { WidgetType, HAButtonData } from "../types";
     import { DashboardService } from "../../../bindings/github.com/mntndev/dash/pkg/dashboard";
-    let { widget }: { widget: WidgetData } = $props();
+    import { Events } from '@wailsio/runtime';
+    import { onMount, onDestroy } from 'svelte';
+    
+    let { widget }: { widget: WidgetType } = $props();
 
-    let isLoading = false;
-    let lastTriggered = "";
+    let isLoading = $state(false);
+    let lastTriggered = $state("");
 
-    let buttonData = $derived(widget.data as HAButtonData);
+    let buttonData = $state<HAButtonData | null>(null);
+
+    onMount(() => {
+        Events.On("widget_data_update", (event: any) => {
+            if (event.data && event.data.length > 0) {
+                const updateInfo = event.data[0];
+                if (updateInfo.widget_id === widget.ID && updateInfo.data) {
+                    buttonData = updateInfo.data as HAButtonData;
+                }
+            }
+        });
+    });
+
+    onDestroy(() => {
+        Events.Off("widget_data_update");
+    });
     let buttonLabel = $derived(buttonData?.label || "Button");
 
     async function triggerWidget() {
@@ -14,7 +32,7 @@
 
         isLoading = true;
         try {
-            await DashboardService.TriggerWidget(widget.id);
+            await DashboardService.TriggerWidget(widget.ID);
             lastTriggered = new Date().toLocaleTimeString();
         } catch (error) {
             console.error("Failed to trigger widget:", error);

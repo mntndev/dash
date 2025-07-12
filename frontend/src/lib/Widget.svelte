@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { WidgetTreeNode, WidgetData, Widget } from './types';
+  import type { WidgetType } from './types';
   import ClockWidget from './widgets/ClockWidget.svelte';
   import HAEntityWidget from './widgets/HAEntityWidget.svelte';
   import HAButtonWidget from './widgets/HAButtonWidget.svelte';
@@ -10,25 +10,9 @@
   import VerticalSplitWidget from './widgets/VerticalSplitWidget.svelte';
   import GrowWidget from './widgets/GrowWidget.svelte';
 
-  // Accept the new Widget structure or legacy formats for backward compatibility
-  let { widgetTreeNode, widget }: { widgetTreeNode?: WidgetTreeNode, widget?: Widget | WidgetData } = $props();
+  let { widget }: { widget: WidgetType } = $props();
 
-  // Use the widget directly if it's the new format, otherwise convert from legacy formats
-  let currentWidget = $derived(
-    widget || (widgetTreeNode ? {
-      ID: widgetTreeNode.id,
-      Type: widgetTreeNode.type,
-      Data: null,
-      LastUpdate: new Date().toISOString(),
-      Children: widgetTreeNode.children?.map(child => ({
-        ID: child.id,
-        Type: child.type,
-        Data: null,
-        LastUpdate: new Date().toISOString(),
-        Children: []
-      }))
-    } : null)
-  );
+  let currentWidget = $derived(widget);
 
   const widgets: Record<string, any> = {
     'clock': ClockWidget,
@@ -44,26 +28,6 @@
 
   let component = $derived(currentWidget ? widgets[currentWidget.Type] : null);
   
-  // Debug log for all widgets
-  $effect(() => {
-    console.log('[Widget Debug]', {
-      currentWidget,
-      hasWidget: !!currentWidget,
-      widgetType: currentWidget?.Type,
-      component: !!component
-    });
-  });
-  
-  // Debug log for container widgets
-  $effect(() => {
-    if (currentWidget && currentWidget.Type && (currentWidget.Type.includes('split') || currentWidget.Type === 'grow')) {
-      console.log(`[Container Widget] ${currentWidget.ID} (${currentWidget.Type}):`, {
-        hasChildren: !!currentWidget.Children?.length,
-        childrenCount: currentWidget.Children?.length || 0,
-        widget: currentWidget
-      });
-    }
-  });
 </script>
 
 {#if component && currentWidget}
