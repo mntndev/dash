@@ -8,30 +8,28 @@ import (
 	"github.com/mntndev/dash/pkg/integrations"
 )
 
-type HAEntityWidget struct {
+type HABaseWidget struct {
 	*BaseWidget
 	EntityID string
 	haProvider integrations.HAProvider
+}
+
+type HAEntityWidget struct {
+	*HABaseWidget
 }
 
 type HAButtonWidget struct {
-	*BaseWidget
-	EntityID string
+	*HABaseWidget
 	Service  string
 	Domain   string
-	haProvider integrations.HAProvider
 }
 
 type HASwitchWidget struct {
-	*BaseWidget
-	EntityID string
-	haProvider integrations.HAProvider
+	*HABaseWidget
 }
 
 type HALightWidget struct {
-	*BaseWidget
-	EntityID string
-	haProvider integrations.HAProvider
+	*HABaseWidget
 }
 
 type HAEntityData struct {
@@ -49,183 +47,157 @@ type HAButtonData struct {
 	Label    string `json:"label"`
 }
 
+func (hab *HABaseWidget) fetchEntityState() (*HAEntityData, error) {
+	haClient := hab.haProvider.GetHAClient()
+	if haClient == nil || !haClient.IsConnected() {
+		return nil, fmt.Errorf("Home Assistant client not connected")
+	}
+
+	states, err := haClient.GetStates()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get states: %w", err)
+	}
+
+	for _, state := range states {
+		if state.EntityID == hab.EntityID {
+			return &HAEntityData{
+				EntityID:    state.EntityID,
+				State:       state.State,
+				Attributes:  state.Attributes,
+				LastChanged: state.LastChanged,
+				LastUpdated: state.LastUpdated,
+			}, nil
+		}
+	}
+
+	return nil, fmt.Errorf("entity %s not found", hab.EntityID)
+}
+
 func CreateHAEntityWidget(config map[string]interface{}, haProvider integrations.HAProvider) (Widget, error) {
-	entityID, ok := config["entity_id"].(string)
-	if !ok {
-		return nil, fmt.Errorf("entity_id is required for home_assistant.entity widget")
+	var haConfig HAEntityConfig
+	parser := NewConfigParser()
+	if err := parser.ParseConfig(config, &haConfig); err != nil {
+		return nil, fmt.Errorf("invalid HA entity configuration: %w", err)
 	}
 
 	widget := &HAEntityWidget{
-		BaseWidget: &BaseWidget{
-			ID:       generateWidgetID(),
-			Type:     "home_assistant.entity",
-			Config:   config,
+		HABaseWidget: &HABaseWidget{
+			BaseWidget: &BaseWidget{
+				ID:       generateWidgetID(),
+				Type:     "home_assistant.entity",
+				Config:   config,
+			},
+			EntityID: haConfig.EntityID,
+			haProvider: haProvider,
 		},
-		EntityID: entityID,
-		haProvider: haProvider,
 	}
 
 	return widget, nil
 }
 
 func CreateHASwitchWidget(config map[string]interface{}, haProvider integrations.HAProvider) (Widget, error) {
-	entityID, ok := config["entity_id"].(string)
-	if !ok {
-		return nil, fmt.Errorf("entity_id is required for home_assistant.switch widget")
+	var haConfig HAEntityConfig
+	parser := NewConfigParser()
+	if err := parser.ParseConfig(config, &haConfig); err != nil {
+		return nil, fmt.Errorf("invalid HA switch configuration: %w", err)
 	}
 
 	widget := &HASwitchWidget{
-		BaseWidget: &BaseWidget{
-			ID:       generateWidgetID(),
-			Type:     "home_assistant.switch",
-			Config:   config,
+		HABaseWidget: &HABaseWidget{
+			BaseWidget: &BaseWidget{
+				ID:       generateWidgetID(),
+				Type:     "home_assistant.switch",
+				Config:   config,
+			},
+			EntityID: haConfig.EntityID,
+			haProvider: haProvider,
 		},
-		EntityID: entityID,
-		haProvider: haProvider,
 	}
 
 	return widget, nil
 }
 
 func CreateHALightWidget(config map[string]interface{}, haProvider integrations.HAProvider) (Widget, error) {
-	entityID, ok := config["entity_id"].(string)
-	if !ok {
-		return nil, fmt.Errorf("entity_id is required for home_assistant.light widget")
+	var haConfig HAEntityConfig
+	parser := NewConfigParser()
+	if err := parser.ParseConfig(config, &haConfig); err != nil {
+		return nil, fmt.Errorf("invalid HA light configuration: %w", err)
 	}
 
 	widget := &HALightWidget{
-		BaseWidget: &BaseWidget{
-			ID:       generateWidgetID(),
-			Type:     "home_assistant.light",
-			Config:   config,
+		HABaseWidget: &HABaseWidget{
+			BaseWidget: &BaseWidget{
+				ID:       generateWidgetID(),
+				Type:     "home_assistant.light",
+				Config:   config,
+			},
+			EntityID: haConfig.EntityID,
+			haProvider: haProvider,
 		},
-		EntityID: entityID,
-		haProvider: haProvider,
 	}
 
 	return widget, nil
 }
 
 func CreateHAButtonWidget(config map[string]interface{}, haProvider integrations.HAProvider) (Widget, error) {
-	entityID, ok := config["entity_id"].(string)
-	if !ok {
-		return nil, fmt.Errorf("entity_id is required for home_assistant.button widget")
-	}
-
-	serviceName, ok := config["service"].(string)
-	if !ok {
-		return nil, fmt.Errorf("service is required for home_assistant.button widget")
-	}
-
-	domain, ok := config["domain"].(string)
-	if !ok {
-		return nil, fmt.Errorf("domain is required for home_assistant.button widget")
+	var buttonConfig HAButtonConfig
+	parser := NewConfigParser()
+	if err := parser.ParseConfig(config, &buttonConfig); err != nil {
+		return nil, fmt.Errorf("invalid HA button configuration: %w", err)
 	}
 
 	widget := &HAButtonWidget{
-		BaseWidget: &BaseWidget{
-			ID:       generateWidgetID(),
-			Type:     "home_assistant.button",
-			Config:   config,
+		HABaseWidget: &HABaseWidget{
+			BaseWidget: &BaseWidget{
+				ID:       generateWidgetID(),
+				Type:     "home_assistant.button",
+				Config:   config,
+			},
+			EntityID: buttonConfig.EntityID,
+			haProvider: haProvider,
 		},
-		EntityID: entityID,
-		Service:  serviceName,
-		Domain:   domain,
-		haProvider: haProvider,
+		Service:  buttonConfig.Service,
+		Domain:   buttonConfig.Domain,
 	}
 
 	widget.Data = &HAButtonData{
-		EntityID: entityID,
-		Service:  serviceName,
-		Domain:   domain,
-		Label:    getStringConfig(config, "label", "Button"),
+		EntityID: buttonConfig.EntityID,
+		Service:  buttonConfig.Service,
+		Domain:   buttonConfig.Domain,
+		Label:    buttonConfig.Label,
 	}
 
 	return widget, nil
 }
 
 func (w *HAEntityWidget) Update(ctx context.Context) error {
-	haClient := w.haProvider.GetHAClient()
-	if haClient == nil || !haClient.IsConnected() {
-		return fmt.Errorf("Home Assistant client not connected")
-	}
-
-	states, err := haClient.GetStates()
+	entityData, err := w.HABaseWidget.fetchEntityState()
 	if err != nil {
-		return fmt.Errorf("failed to get states: %w", err)
+		return err
 	}
-
-	for _, state := range states {
-		if state.EntityID == w.EntityID {
-			w.Data = &HAEntityData{
-				EntityID:    state.EntityID,
-				State:       state.State,
-				Attributes:  state.Attributes,
-				LastChanged: state.LastChanged,
-				LastUpdated: state.LastUpdated,
-			}
-			w.LastUpdate = time.Now()
-			return nil
-		}
-	}
-
-	return fmt.Errorf("entity %s not found", w.EntityID)
+	w.Data = entityData
+	w.LastUpdate = time.Now()
+	return nil
 }
 
 func (w *HASwitchWidget) Update(ctx context.Context) error {
-	haClient := w.haProvider.GetHAClient()
-	if haClient == nil || !haClient.IsConnected() {
-		return fmt.Errorf("Home Assistant client not connected")
-	}
-
-	states, err := haClient.GetStates()
+	entityData, err := w.HABaseWidget.fetchEntityState()
 	if err != nil {
-		return fmt.Errorf("failed to get states: %w", err)
+		return err
 	}
-
-	for _, state := range states {
-		if state.EntityID == w.EntityID {
-			w.Data = &HAEntityData{
-				EntityID:    state.EntityID,
-				State:       state.State,
-				Attributes:  state.Attributes,
-				LastChanged: state.LastChanged,
-				LastUpdated: state.LastUpdated,
-			}
-			w.LastUpdate = time.Now()
-			return nil
-		}
-	}
-
-	return fmt.Errorf("entity %s not found", w.EntityID)
+	w.Data = entityData
+	w.LastUpdate = time.Now()
+	return nil
 }
 
 func (w *HALightWidget) Update(ctx context.Context) error {
-	haClient := w.haProvider.GetHAClient()
-	if haClient == nil || !haClient.IsConnected() {
-		return fmt.Errorf("Home Assistant client not connected")
-	}
-
-	states, err := haClient.GetStates()
+	entityData, err := w.HABaseWidget.fetchEntityState()
 	if err != nil {
-		return fmt.Errorf("failed to get states: %w", err)
+		return err
 	}
-
-	for _, state := range states {
-		if state.EntityID == w.EntityID {
-			w.Data = &HAEntityData{
-				EntityID:    state.EntityID,
-				State:       state.State,
-				Attributes:  state.Attributes,
-				LastChanged: state.LastChanged,
-				LastUpdated: state.LastUpdated,
-			}
-			w.LastUpdate = time.Now()
-			return nil
-		}
-	}
-
-	return fmt.Errorf("entity %s not found", w.EntityID)
+	w.Data = entityData
+	w.LastUpdate = time.Now()
+	return nil
 }
 
 func (w *HAButtonWidget) Update(ctx context.Context) error {
@@ -235,7 +207,7 @@ func (w *HAButtonWidget) Update(ctx context.Context) error {
 
 
 func (w *HASwitchWidget) Trigger() error {
-	haClient := w.haProvider.GetHAClient()
+	haClient := w.HABaseWidget.haProvider.GetHAClient()
 	if haClient == nil || !haClient.IsConnected() {
 		return fmt.Errorf("Home Assistant client not connected")
 	}
@@ -248,7 +220,7 @@ func (w *HASwitchWidget) Trigger() error {
 }
 
 func (w *HALightWidget) Trigger() error {
-	haClient := w.haProvider.GetHAClient()
+	haClient := w.HABaseWidget.haProvider.GetHAClient()
 	if haClient == nil || !haClient.IsConnected() {
 		return fmt.Errorf("Home Assistant client not connected")
 	}
@@ -261,7 +233,7 @@ func (w *HALightWidget) Trigger() error {
 }
 
 func (w *HALightWidget) SetBrightness(brightness int) error {
-	haClient := w.haProvider.GetHAClient()
+	haClient := w.HABaseWidget.haProvider.GetHAClient()
 	if haClient == nil || !haClient.IsConnected() {
 		return fmt.Errorf("Home Assistant client not connected")
 	}
@@ -275,7 +247,7 @@ func (w *HALightWidget) SetBrightness(brightness int) error {
 }
 
 func (w *HAButtonWidget) Trigger() error {
-	haClient := w.haProvider.GetHAClient()
+	haClient := w.HABaseWidget.haProvider.GetHAClient()
 	if haClient == nil || !haClient.IsConnected() {
 		return fmt.Errorf("Home Assistant client not connected")
 	}
@@ -291,9 +263,3 @@ func generateWidgetID() string {
 	return fmt.Sprintf("widget_%d", time.Now().UnixNano())
 }
 
-func getStringConfig(config map[string]interface{}, key, defaultValue string) string {
-	if val, ok := config[key].(string); ok {
-		return val
-	}
-	return defaultValue
-}

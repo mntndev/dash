@@ -2,6 +2,7 @@ package widgets
 
 import (
 	"context"
+	"fmt"
 	"time"
 )
 
@@ -17,7 +18,11 @@ type ClockData struct {
 }
 
 func CreateClockWidget(config map[string]interface{}) (Widget, error) {
-	format := getStringConfig(config, "format", "15:04:05")
+	var clockConfig ClockConfig
+	parser := NewConfigParser()
+	if err := parser.ParseConfig(config, &clockConfig); err != nil {
+		return nil, fmt.Errorf("invalid clock configuration: %w", err)
+	}
 	
 	widget := &ClockWidget{
 		BaseWidget: &BaseWidget{
@@ -25,7 +30,7 @@ func CreateClockWidget(config map[string]interface{}) (Widget, error) {
 			Type:     "clock",
 			Config:   config,
 		},
-		Format: format,
+		Format: clockConfig.Format,
 	}
 
 	return widget, nil

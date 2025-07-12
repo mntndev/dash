@@ -20,6 +20,25 @@ type Widget interface {
 	IsContainer() bool
 }
 
+// Capability interfaces for widgets
+type Triggerable interface {
+	Trigger() error
+}
+
+type BrightnessControllable interface {
+	SetBrightness(brightness int) error
+}
+
+type Configurable interface {
+	Configure(config map[string]interface{}) error
+}
+
+type Container interface {
+	IsContainer() bool
+	GetChildren() []Widget
+	SetChildren(children []Widget)
+}
+
 type BaseWidget struct {
 	ID       string
 	Type     string
@@ -67,6 +86,38 @@ func (w *BaseWidget) Update(ctx context.Context) error {
 	return nil
 }
 
+type WidgetCreator func(config map[string]interface{}, haProvider integrations.HAProvider, dexcomProvider integrations.DexcomProvider) (Widget, error)
+
+type WidgetRegistry struct {
+	creators map[string]WidgetCreator
+}
+
+func NewWidgetRegistry() *WidgetRegistry {
+	return &WidgetRegistry{
+		creators: make(map[string]WidgetCreator),
+	}
+}
+
+func (wr *WidgetRegistry) Register(widgetType string, creator WidgetCreator) {
+	wr.creators[widgetType] = creator
+}
+
+func (wr *WidgetRegistry) Create(widgetType string, config map[string]interface{}, haProvider integrations.HAProvider, dexcomProvider integrations.DexcomProvider) (Widget, error) {
+	creator, exists := wr.creators[widgetType]
+	if !exists {
+		return nil, fmt.Errorf("unsupported widget type: %s", widgetType)
+	}
+	return creator(config, haProvider, dexcomProvider)
+}
+
+func (wr *WidgetRegistry) GetSupportedTypes() []string {
+	types := make([]string, 0, len(wr.creators))
+	for widgetType := range wr.creators {
+		types = append(types, widgetType)
+	}
+	return types
+}
+
 type WidgetFactory interface {
 	Create(widgetType string, config map[string]interface{}) (Widget, error)
 	GetSupportedTypes() []string
@@ -75,53 +126,65 @@ type WidgetFactory interface {
 type DefaultWidgetFactory struct {
 	haProvider     integrations.HAProvider
 	dexcomProvider integrations.DexcomProvider
+	registry       *WidgetRegistry
 }
 
 func NewDefaultWidgetFactory(haProvider integrations.HAProvider, dexcomProvider integrations.DexcomProvider) *DefaultWidgetFactory {
+	registry := NewWidgetRegistry()
+	registerBuiltinWidgets(registry)
+	
 	return &DefaultWidgetFactory{
 		haProvider:     haProvider,
 		dexcomProvider: dexcomProvider,
+		registry:       registry,
 	}
+}
+
+func registerBuiltinWidgets(registry *WidgetRegistry) {
+	registry.Register("home_assistant.entity", func(config map[string]interface{}, haProvider integrations.HAProvider, dexcomProvider integrations.DexcomProvider) (Widget, error) {
+		return CreateHAEntityWidget(config, haProvider)
+	})
+	
+	registry.Register("home_assistant.button", func(config map[string]interface{}, haProvider integrations.HAProvider, dexcomProvider integrations.DexcomProvider) (Widget, error) {
+		return CreateHAButtonWidget(config, haProvider)
+	})
+	
+	registry.Register("home_assistant.switch", func(config map[string]interface{}, haProvider integrations.HAProvider, dexcomProvider integrations.DexcomProvider) (Widget, error) {
+		return CreateHASwitchWidget(config, haProvider)
+	})
+	
+	registry.Register("home_assistant.light", func(config map[string]interface{}, haProvider integrations.HAProvider, dexcomProvider integrations.DexcomProvider) (Widget, error) {
+		return CreateHALightWidget(config, haProvider)
+	})
+	
+	registry.Register("dexcom", func(config map[string]interface{}, haProvider integrations.HAProvider, dexcomProvider integrations.DexcomProvider) (Widget, error) {
+		return CreateDexcomWidget(config, dexcomProvider)
+	})
+	
+	registry.Register("clock", func(config map[string]interface{}, haProvider integrations.HAProvider, dexcomProvider integrations.DexcomProvider) (Widget, error) {
+		return CreateClockWidget(config)
+	})
+	
+	registry.Register("horizontal_split", func(config map[string]interface{}, haProvider integrations.HAProvider, dexcomProvider integrations.DexcomProvider) (Widget, error) {
+		return CreateHorizontalSplitWidget(config)
+	})
+	
+	registry.Register("vertical_split", func(config map[string]interface{}, haProvider integrations.HAProvider, dexcomProvider integrations.DexcomProvider) (Widget, error) {
+		return CreateVerticalSplitWidget(config)
+	})
+	
+	registry.Register("grow", func(config map[string]interface{}, haProvider integrations.HAProvider, dexcomProvider integrations.DexcomProvider) (Widget, error) {
+		return CreateGrowWidget(config)
+	})
 }
 
 
 func (f *DefaultWidgetFactory) Create(widgetType string, config map[string]interface{}) (Widget, error) {
-	switch widgetType {
-	case "home_assistant.entity":
-		return CreateHAEntityWidget(config, f.haProvider)
-	case "home_assistant.button":
-		return CreateHAButtonWidget(config, f.haProvider)
-	case "home_assistant.switch":
-		return CreateHASwitchWidget(config, f.haProvider)
-	case "home_assistant.light":
-		return CreateHALightWidget(config, f.haProvider)
-	case "dexcom":
-		return CreateDexcomWidget(config, f.dexcomProvider)
-	case "clock":
-		return CreateClockWidget(config)
-	case "horizontal_split":
-		return CreateHorizontalSplitWidget(config)
-	case "vertical_split":
-		return CreateVerticalSplitWidget(config)
-	case "grow":
-		return CreateGrowWidget(config)
-	default:
-		return nil, fmt.Errorf("unsupported widget type: %s", widgetType)
-	}
+	return f.registry.Create(widgetType, config, f.haProvider, f.dexcomProvider)
 }
 
 func (f *DefaultWidgetFactory) GetSupportedTypes() []string {
-	return []string{
-		"home_assistant.entity",
-		"home_assistant.button",
-		"home_assistant.switch",
-		"home_assistant.light",
-		"dexcom",
-		"clock",
-		"horizontal_split",
-		"vertical_split",
-		"grow",
-	}
+	return f.registry.GetSupportedTypes()
 }
 
 type WidgetManager struct {

@@ -282,6 +282,10 @@ func (ds *DashboardService) getWidgetLastUpdate(widget widgets.Widget) time.Time
 		if w.BaseWidget != nil {
 			return w.BaseWidget.LastUpdate
 		}
+	case *widgets.SplitWidget:
+		if w.BaseWidget != nil {
+			return w.BaseWidget.LastUpdate
+		}
 	}
 	return time.Now()
 }
@@ -313,16 +317,8 @@ func (ds *DashboardService) TriggerWidget(widgetID string) error {
 		return fmt.Errorf("widget not found: %s", widgetID)
 	}
 	
-	if buttonWidget, ok := widget.(*widgets.HAButtonWidget); ok {
-		return buttonWidget.Trigger()
-	}
-	
-	if switchWidget, ok := widget.(*widgets.HASwitchWidget); ok {
-		return switchWidget.Trigger()
-	}
-	
-	if lightWidget, ok := widget.(*widgets.HALightWidget); ok {
-		return lightWidget.Trigger()
+	if triggerable, ok := widget.(widgets.Triggerable); ok {
+		return triggerable.Trigger()
 	}
 	
 	return fmt.Errorf("widget %s does not support triggering", widgetID)
@@ -337,11 +333,11 @@ func (ds *DashboardService) SetLightBrightness(widgetID string, brightness int) 
 		return fmt.Errorf("widget not found: %s", widgetID)
 	}
 	
-	if lightWidget, ok := widget.(*widgets.HALightWidget); ok {
-		return lightWidget.SetBrightness(brightness)
+	if brightnessControllable, ok := widget.(widgets.BrightnessControllable); ok {
+		return brightnessControllable.SetBrightness(brightness)
 	}
 	
-	return fmt.Errorf("widget %s is not a light widget", widgetID)
+	return fmt.Errorf("widget %s does not support brightness control", widgetID)
 }
 
 func (ds *DashboardService) GetConfig() *config.Config {

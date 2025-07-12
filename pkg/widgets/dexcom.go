@@ -3,6 +3,8 @@ package widgets
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/mntndev/dash/pkg/integrations"
@@ -64,10 +66,8 @@ func (w *DexcomWidget) Update(ctx context.Context) error {
 		trendString = "?"
 	}
 
-	var timestamp time.Time
-	if latest.ST != "" {
-		timestamp = time.Now()
-	} else {
+	timestamp := parseDexcomTimestamp(latest.WT)
+	if timestamp.IsZero() {
 		timestamp = time.Now()
 	}
 
@@ -79,5 +79,36 @@ func (w *DexcomWidget) Update(ctx context.Context) error {
 	}
 	w.LastUpdate = lastUpdate
 	return nil
+}
+
+func parseDexcomTimestamp(dateStr string) time.Time {
+	if dateStr == "" {
+		return time.Time{}
+	}
+	
+	// Dexcom timestamps come in format: "/Date(milliseconds)/"
+	if !strings.HasPrefix(dateStr, "/Date(") || !strings.HasSuffix(dateStr, ")/") {
+		return time.Time{}
+	}
+	
+	// Extract the timestamp part
+	timestampStr := strings.TrimPrefix(dateStr, "/Date(")
+	timestampStr = strings.TrimSuffix(timestampStr, ")/")
+	
+	// Handle timezone offset if present (like "-0700")
+	if idx := strings.LastIndex(timestampStr, "+"); idx > 0 {
+		timestampStr = timestampStr[:idx]
+	} else if idx := strings.LastIndex(timestampStr, "-"); idx > 0 {
+		timestampStr = timestampStr[:idx]
+	}
+	
+	// Parse milliseconds
+	milliseconds, err := strconv.ParseInt(timestampStr, 10, 64)
+	if err != nil {
+		return time.Time{}
+	}
+	
+	// Convert to time.Time (Dexcom uses milliseconds since Unix epoch)
+	return time.Unix(milliseconds/1000, (milliseconds%1000)*1000000).UTC()
 }
 
