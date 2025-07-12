@@ -52,6 +52,10 @@ func (s *DashboardAppService) TriggerWidget(widgetID string) error {
 	return s.dashboardService.TriggerWidget(widgetID)
 }
 
+func (s *DashboardAppService) SetLightBrightness(widgetID string, brightness int) error {
+	return s.dashboardService.SetLightBrightness(widgetID, brightness)
+}
+
 func (s *DashboardAppService) ReloadConfig() error {
 	return s.dashboardService.ReloadConfig(config.GetDefaultConfigPath())
 }

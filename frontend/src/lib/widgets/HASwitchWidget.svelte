@@ -2,14 +2,15 @@
     import type { WidgetData, HAEntityData } from "../types";
     import { DashboardAppService } from "../../../bindings/github.com/mntndev/dash";
 
-    export let widget: WidgetData;
+    let { widget }: { widget: WidgetData } = $props();
 
     let isLoading = false;
 
-    $: entityData = widget.data as HAEntityData;
-    $: entityName =
-        entityData?.entity_id?.split(".")[1]?.replace(/_/g, " ") || "Unknown";
-    $: isOn = entityData?.state === "on";
+    let entityData = $derived(widget.data as HAEntityData);
+    let entityName = $derived(
+        entityData?.entity_id?.split(".")[1]?.replace(/_/g, " ") || "Unknown"
+    );
+    let isOn = $derived(entityData?.state === "on");
 
     async function toggleSwitch() {
         if (isLoading) return;

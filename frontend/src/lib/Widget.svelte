@@ -4,27 +4,35 @@
   import HAEntityWidget from './widgets/HAEntityWidget.svelte';
   import HAButtonWidget from './widgets/HAButtonWidget.svelte';
   import HASwitchWidget from './widgets/HASwitchWidget.svelte';
+  import HALightWidget from './widgets/HALightWidget.svelte';
   import HorizontalSplitWidget from './widgets/HorizontalSplitWidget.svelte';
   import VerticalSplitWidget from './widgets/VerticalSplitWidget.svelte';
   import GrowWidget from './widgets/GrowWidget.svelte';
 
-  export let widget: WidgetData;
+  let { widget }: { widget: WidgetData } = $props();
 
   const widgets = {
     'clock': ClockWidget,
     'home_assistant.entity': HAEntityWidget,
     'home_assistant.button': HAButtonWidget,
     'home_assistant.switch': HASwitchWidget,
+    'home_assistant.light': HALightWidget,
     'horizontal_split': HorizontalSplitWidget,
     'vertical_split': VerticalSplitWidget,
     'grow': GrowWidget
   };
 
-  $: component = widgets[widget.type];
+  let component = $derived(widgets[widget.type]);
+  
+  // Extract stable widget identity from changing data
+  let widgetId = $derived(widget.id);
+  let widgetType = $derived(widget.type);
 </script>
 
 {#if component}
-  <svelte:component this={component} {widget} />
+  {#key `${widgetId}-${widgetType}`}
+    <svelte:component this={component} {widget} />
+  {/key}
 {:else}
   <div class="flex items-center justify-center h-full text-gray-500 italic">
     <p>Unknown widget type: {widget.type}</p>

@@ -237,6 +237,10 @@ func (ds *DashboardService) getWidgetLastUpdate(widget widgets.Widget) time.Time
 		if w.BaseWidget != nil {
 			return w.BaseWidget.LastUpdate
 		}
+	case *widgets.HALightWidget:
+		if w.BaseWidget != nil {
+			return w.BaseWidget.LastUpdate
+		}
 	case *widgets.ClockWidget:
 		if w.BaseWidget != nil {
 			return w.BaseWidget.LastUpdate
@@ -272,7 +276,27 @@ func (ds *DashboardService) TriggerWidget(widgetID string) error {
 		return switchWidget.Trigger()
 	}
 	
+	if lightWidget, ok := widget.(*widgets.HALightWidget); ok {
+		return lightWidget.Trigger()
+	}
+	
 	return fmt.Errorf("widget %s does not support triggering", widgetID)
+}
+
+func (ds *DashboardService) SetLightBrightness(widgetID string, brightness int) error {
+	ds.mu.RLock()
+	defer ds.mu.RUnlock()
+	
+	widget, exists := ds.widgetManager.GetWidget(widgetID)
+	if !exists {
+		return fmt.Errorf("widget not found: %s", widgetID)
+	}
+	
+	if lightWidget, ok := widget.(*widgets.HALightWidget); ok {
+		return lightWidget.SetBrightness(brightness)
+	}
+	
+	return fmt.Errorf("widget %s is not a light widget", widgetID)
 }
 
 func (ds *DashboardService) GetConfig() *config.Config {

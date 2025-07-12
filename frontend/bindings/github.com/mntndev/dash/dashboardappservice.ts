@@ -13,6 +13,10 @@ export function ReloadConfig(): $CancellablePromise<void> {
     return $Call.ByID(3284817101);
 }
 
+export function SetLightBrightness(widgetID: string, brightness: number): $CancellablePromise<void> {
+    return $Call.ByID(2522601653, widgetID, brightness);
+}
+
 export function TriggerWidget(widgetID: string): $CancellablePromise<void> {
     return $Call.ByID(472610134, widgetID);
 }

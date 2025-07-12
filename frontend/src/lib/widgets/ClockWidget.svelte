@@ -1,10 +1,10 @@
 <script lang="ts">
   import type { WidgetData, ClockData } from '../types';
 
-  export let widget: WidgetData;
+  let { widget }: { widget: WidgetData } = $props();
   
-  $: clockData = widget.data as ClockData;
-  $: displayTime = clockData?.display || new Date().toLocaleTimeString();
+  let clockData = $derived(widget.data as ClockData);
+  let displayTime = $derived(clockData?.display || new Date().toLocaleTimeString());
 </script>
 
 <div class="p-4 flex flex-col justify-center items-center flex-none">

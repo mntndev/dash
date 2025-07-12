@@ -1,11 +1,11 @@
 <script lang="ts">
   import type { WidgetData, HAEntityData } from '../types';
 
-  export let widget: WidgetData;
+  let { widget }: { widget: WidgetData } = $props();
   
-  $: entityData = widget.data as HAEntityData;
-  $: entityName = entityData?.entity_id?.split('.')[1]?.replace(/_/g, ' ') || 'Unknown';
-  $: lastUpdated = entityData?.last_updated ? new Date(entityData.last_updated).toLocaleString() : 'Never';
+  let entityData = $derived(widget.data as HAEntityData);
+  let entityName = $derived(entityData?.entity_id?.split('.')[1]?.replace(/_/g, ' ') || 'Unknown');
+  let lastUpdated = $derived(entityData?.last_updated ? new Date(entityData.last_updated).toLocaleString() : 'Never');
 </script>
 
 <div class="p-4 flex flex-col flex-none">

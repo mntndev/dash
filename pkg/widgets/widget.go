@@ -84,6 +84,7 @@ func NewDefaultWidgetFactory() *DefaultWidgetFactory {
 	factory.RegisterCreator("home_assistant.entity", CreateHAEntityWidget)
 	factory.RegisterCreator("home_assistant.button", CreateHAButtonWidget)
 	factory.RegisterCreator("home_assistant.switch", CreateHASwitchWidget)
+	factory.RegisterCreator("home_assistant.light", CreateHALightWidget)
 	factory.RegisterCreator("clock", CreateClockWidget)
 	factory.RegisterCreator("horizontal_split", CreateHorizontalSplitWidget)
 	factory.RegisterCreator("vertical_split", CreateVerticalSplitWidget)

@@ -1,13 +1,13 @@
 <script lang="ts">
     import type { WidgetData, HAButtonData } from "../types";
     import { DashboardAppService } from "../../../bindings/github.com/mntndev/dash";
-    export let widget: WidgetData;
+    let { widget }: { widget: WidgetData } = $props();
 
     let isLoading = false;
     let lastTriggered = "";
 
-    $: buttonData = widget.data as HAButtonData;
-    $: buttonLabel = buttonData?.label || "Button";
+    let buttonData = $derived(widget.data as HAButtonData);
+    let buttonLabel = $derived(buttonData?.label || "Button");
 
     async function triggerWidget() {
         if (isLoading) return;

@@ -2,15 +2,15 @@
     import type { WidgetData } from "../types";
     import Widget from "../Widget.svelte";
 
-    export let widget: WidgetData;
+    let { widget }: { widget: WidgetData } = $props();
     
-    $: children = widget.children || [];
-    $: hasChild = children.length > 0;
+    let children = $derived(widget.children || []);
+    let hasChild = $derived(children.length > 0);
 </script>
 
 {#if hasChild}
     <div class="flex-1">
-        {#each children as child}
+        {#each children as child (child.id)}
             <Widget widget={child} />
         {/each}
     </div>
