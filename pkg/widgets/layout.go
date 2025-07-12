@@ -4,16 +4,14 @@ import (
 	"context"
 )
 
-// HorizontalSplitWidget represents a horizontal split layout container
 type HorizontalSplitWidget struct {
 	*BaseWidget
-	Sizes []float64 // Relative sizes for each child
+	Sizes []float64
 }
 
-// VerticalSplitWidget represents a vertical split layout container
 type VerticalSplitWidget struct {
 	*BaseWidget
-	Sizes []float64 // Relative sizes for each child
+	Sizes []float64
 }
 
 
@@ -23,7 +21,7 @@ type LayoutData struct {
 	Children []Widget  `json:"children,omitempty"`
 }
 
-func CreateHorizontalSplitWidget(config map[string]interface{}, service ServiceProvider) (Widget, error) {
+func CreateHorizontalSplitWidget(config map[string]interface{}) (Widget, error) {
 	sizes := []float64{}
 	if sizesConfig, ok := config["sizes"].([]interface{}); ok {
 		for _, size := range sizesConfig {
@@ -46,7 +44,7 @@ func CreateHorizontalSplitWidget(config map[string]interface{}, service ServiceP
 	return widget, nil
 }
 
-func CreateVerticalSplitWidget(config map[string]interface{}, service ServiceProvider) (Widget, error) {
+func CreateVerticalSplitWidget(config map[string]interface{}) (Widget, error) {
 	sizes := []float64{}
 	if sizesConfig, ok := config["sizes"].([]interface{}); ok {
 		for _, size := range sizesConfig {
@@ -101,7 +99,6 @@ func (w *VerticalSplitWidget) IsContainer() bool {
 func (w *HorizontalSplitWidget) Configure(config map[string]interface{}) error {
 	w.BaseWidget.Configure(config)
 	
-	// Update sizes from config
 	if sizesConfig, ok := config["sizes"].([]interface{}); ok {
 		sizes := []float64{}
 		for _, size := range sizesConfig {
@@ -118,7 +115,6 @@ func (w *HorizontalSplitWidget) Configure(config map[string]interface{}) error {
 func (w *VerticalSplitWidget) Configure(config map[string]interface{}) error {
 	w.BaseWidget.Configure(config)
 	
-	// Update sizes from config
 	if sizesConfig, ok := config["sizes"].([]interface{}); ok {
 		sizes := []float64{}
 		for _, size := range sizesConfig {

@@ -4,12 +4,14 @@ import (
 	"context"
 	"fmt"
 	"time"
+
+	"github.com/mntndev/dash/pkg/integrations"
 )
 
 type HAEntityWidget struct {
 	*BaseWidget
 	EntityID string
-	service  ServiceProvider
+	haProvider integrations.HAProvider
 }
 
 type HAButtonWidget struct {
@@ -17,19 +19,19 @@ type HAButtonWidget struct {
 	EntityID string
 	Service  string
 	Domain   string
-	service  ServiceProvider
+	haProvider integrations.HAProvider
 }
 
 type HASwitchWidget struct {
 	*BaseWidget
 	EntityID string
-	service  ServiceProvider
+	haProvider integrations.HAProvider
 }
 
 type HALightWidget struct {
 	*BaseWidget
 	EntityID string
-	service  ServiceProvider
+	haProvider integrations.HAProvider
 }
 
 type HAEntityData struct {
@@ -47,7 +49,7 @@ type HAButtonData struct {
 	Label    string `json:"label"`
 }
 
-func CreateHAEntityWidget(config map[string]interface{}, service ServiceProvider) (Widget, error) {
+func CreateHAEntityWidget(config map[string]interface{}, haProvider integrations.HAProvider) (Widget, error) {
 	entityID, ok := config["entity_id"].(string)
 	if !ok {
 		return nil, fmt.Errorf("entity_id is required for home_assistant.entity widget")
@@ -60,13 +62,13 @@ func CreateHAEntityWidget(config map[string]interface{}, service ServiceProvider
 			Config:   config,
 		},
 		EntityID: entityID,
-		service:  service,
+		haProvider: haProvider,
 	}
 
 	return widget, nil
 }
 
-func CreateHASwitchWidget(config map[string]interface{}, service ServiceProvider) (Widget, error) {
+func CreateHASwitchWidget(config map[string]interface{}, haProvider integrations.HAProvider) (Widget, error) {
 	entityID, ok := config["entity_id"].(string)
 	if !ok {
 		return nil, fmt.Errorf("entity_id is required for home_assistant.switch widget")
@@ -79,13 +81,13 @@ func CreateHASwitchWidget(config map[string]interface{}, service ServiceProvider
 			Config:   config,
 		},
 		EntityID: entityID,
-		service:  service,
+		haProvider: haProvider,
 	}
 
 	return widget, nil
 }
 
-func CreateHALightWidget(config map[string]interface{}, service ServiceProvider) (Widget, error) {
+func CreateHALightWidget(config map[string]interface{}, haProvider integrations.HAProvider) (Widget, error) {
 	entityID, ok := config["entity_id"].(string)
 	if !ok {
 		return nil, fmt.Errorf("entity_id is required for home_assistant.light widget")
@@ -98,13 +100,13 @@ func CreateHALightWidget(config map[string]interface{}, service ServiceProvider)
 			Config:   config,
 		},
 		EntityID: entityID,
-		service:  service,
+		haProvider: haProvider,
 	}
 
 	return widget, nil
 }
 
-func CreateHAButtonWidget(config map[string]interface{}, service ServiceProvider) (Widget, error) {
+func CreateHAButtonWidget(config map[string]interface{}, haProvider integrations.HAProvider) (Widget, error) {
 	entityID, ok := config["entity_id"].(string)
 	if !ok {
 		return nil, fmt.Errorf("entity_id is required for home_assistant.button widget")
@@ -129,7 +131,7 @@ func CreateHAButtonWidget(config map[string]interface{}, service ServiceProvider
 		EntityID: entityID,
 		Service:  serviceName,
 		Domain:   domain,
-		service:  service,
+		haProvider: haProvider,
 	}
 
 	widget.Data = &HAButtonData{
@@ -143,7 +145,7 @@ func CreateHAButtonWidget(config map[string]interface{}, service ServiceProvider
 }
 
 func (w *HAEntityWidget) Update(ctx context.Context) error {
-	haClient := w.service.GetHAClient()
+	haClient := w.haProvider.GetHAClient()
 	if haClient == nil || !haClient.IsConnected() {
 		return fmt.Errorf("Home Assistant client not connected")
 	}
@@ -171,7 +173,7 @@ func (w *HAEntityWidget) Update(ctx context.Context) error {
 }
 
 func (w *HASwitchWidget) Update(ctx context.Context) error {
-	haClient := w.service.GetHAClient()
+	haClient := w.haProvider.GetHAClient()
 	if haClient == nil || !haClient.IsConnected() {
 		return fmt.Errorf("Home Assistant client not connected")
 	}
@@ -199,7 +201,7 @@ func (w *HASwitchWidget) Update(ctx context.Context) error {
 }
 
 func (w *HALightWidget) Update(ctx context.Context) error {
-	haClient := w.service.GetHAClient()
+	haClient := w.haProvider.GetHAClient()
 	if haClient == nil || !haClient.IsConnected() {
 		return fmt.Errorf("Home Assistant client not connected")
 	}
@@ -231,10 +233,9 @@ func (w *HAButtonWidget) Update(ctx context.Context) error {
 	return nil
 }
 
-// SetHAClient methods removed - clients are now injected during widget creation
 
 func (w *HASwitchWidget) Trigger() error {
-	haClient := w.service.GetHAClient()
+	haClient := w.haProvider.GetHAClient()
 	if haClient == nil || !haClient.IsConnected() {
 		return fmt.Errorf("Home Assistant client not connected")
 	}
@@ -247,7 +248,7 @@ func (w *HASwitchWidget) Trigger() error {
 }
 
 func (w *HALightWidget) Trigger() error {
-	haClient := w.service.GetHAClient()
+	haClient := w.haProvider.GetHAClient()
 	if haClient == nil || !haClient.IsConnected() {
 		return fmt.Errorf("Home Assistant client not connected")
 	}
@@ -260,7 +261,7 @@ func (w *HALightWidget) Trigger() error {
 }
 
 func (w *HALightWidget) SetBrightness(brightness int) error {
-	haClient := w.service.GetHAClient()
+	haClient := w.haProvider.GetHAClient()
 	if haClient == nil || !haClient.IsConnected() {
 		return fmt.Errorf("Home Assistant client not connected")
 	}
@@ -274,7 +275,7 @@ func (w *HALightWidget) SetBrightness(brightness int) error {
 }
 
 func (w *HAButtonWidget) Trigger() error {
-	haClient := w.service.GetHAClient()
+	haClient := w.haProvider.GetHAClient()
 	if haClient == nil || !haClient.IsConnected() {
 		return fmt.Errorf("Home Assistant client not connected")
 	}

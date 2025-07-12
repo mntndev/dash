@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"time"
+
+	"github.com/mntndev/dash/pkg/integrations"
 )
 
 type Widget interface {
@@ -13,7 +15,6 @@ type Widget interface {
 	Update(ctx context.Context) error
 	Configure(config map[string]interface{}) error
 	SetID(id string)
-	// Layout support
 	GetChildren() []Widget
 	SetChildren(children []Widget)
 	IsContainer() bool
@@ -63,7 +64,6 @@ func (w *BaseWidget) IsContainer() bool {
 }
 
 func (w *BaseWidget) Update(ctx context.Context) error {
-	// Base implementation does nothing
 	return nil
 }
 
@@ -73,48 +73,55 @@ type WidgetFactory interface {
 }
 
 type DefaultWidgetFactory struct {
-	creators map[string]func(map[string]interface{}, ServiceProvider) (Widget, error)
-	service  ServiceProvider
+	haProvider     integrations.HAProvider
+	dexcomProvider integrations.DexcomProvider
 }
 
-func NewDefaultWidgetFactory(service ServiceProvider) *DefaultWidgetFactory {
-	factory := &DefaultWidgetFactory{
-		creators: make(map[string]func(map[string]interface{}, ServiceProvider) (Widget, error)),
-		service:  service,
+func NewDefaultWidgetFactory(haProvider integrations.HAProvider, dexcomProvider integrations.DexcomProvider) *DefaultWidgetFactory {
+	return &DefaultWidgetFactory{
+		haProvider:     haProvider,
+		dexcomProvider: dexcomProvider,
 	}
-	
-	factory.RegisterCreator("home_assistant.entity", CreateHAEntityWidget)
-	factory.RegisterCreator("home_assistant.button", CreateHAButtonWidget)
-	factory.RegisterCreator("home_assistant.switch", CreateHASwitchWidget)
-	factory.RegisterCreator("home_assistant.light", CreateHALightWidget)
-	factory.RegisterCreator("dexcom", CreateDexcomWidget)
-	factory.RegisterCreator("clock", CreateClockWidget)
-	factory.RegisterCreator("horizontal_split", CreateHorizontalSplitWidget)
-	factory.RegisterCreator("vertical_split", CreateVerticalSplitWidget)
-	factory.RegisterCreator("grow", CreateGrowWidget)
-	
-	return factory
 }
 
-func (f *DefaultWidgetFactory) RegisterCreator(widgetType string, creator func(map[string]interface{}, ServiceProvider) (Widget, error)) {
-	f.creators[widgetType] = creator
-}
 
 func (f *DefaultWidgetFactory) Create(widgetType string, config map[string]interface{}) (Widget, error) {
-	creator, exists := f.creators[widgetType]
-	if !exists {
+	switch widgetType {
+	case "home_assistant.entity":
+		return CreateHAEntityWidget(config, f.haProvider)
+	case "home_assistant.button":
+		return CreateHAButtonWidget(config, f.haProvider)
+	case "home_assistant.switch":
+		return CreateHASwitchWidget(config, f.haProvider)
+	case "home_assistant.light":
+		return CreateHALightWidget(config, f.haProvider)
+	case "dexcom":
+		return CreateDexcomWidget(config, f.dexcomProvider)
+	case "clock":
+		return CreateClockWidget(config)
+	case "horizontal_split":
+		return CreateHorizontalSplitWidget(config)
+	case "vertical_split":
+		return CreateVerticalSplitWidget(config)
+	case "grow":
+		return CreateGrowWidget(config)
+	default:
 		return nil, fmt.Errorf("unsupported widget type: %s", widgetType)
 	}
-	
-	return creator(config, f.service)
 }
 
 func (f *DefaultWidgetFactory) GetSupportedTypes() []string {
-	types := make([]string, 0, len(f.creators))
-	for t := range f.creators {
-		types = append(types, t)
+	return []string{
+		"home_assistant.entity",
+		"home_assistant.button",
+		"home_assistant.switch",
+		"home_assistant.light",
+		"dexcom",
+		"clock",
+		"horizontal_split",
+		"vertical_split",
+		"grow",
 	}
-	return types
 }
 
 type WidgetManager struct {
@@ -135,7 +142,6 @@ func (wm *WidgetManager) CreateWidget(id string, widgetType string, config map[s
 		return fmt.Errorf("failed to create widget %s: %w", id, err)
 	}
 	
-	// Set the widget's internal ID to match the key used in the manager
 	widget.SetID(id)
 	
 	wm.widgets[id] = widget
@@ -164,12 +170,11 @@ func (wm *WidgetManager) UpdateAll(ctx context.Context) error {
 	return nil
 }
 
-// GrowWidget - A widget that applies flex-grow behavior to itself or its child
 type GrowWidget struct {
 	*BaseWidget
 }
 
-func CreateGrowWidget(config map[string]interface{}, service ServiceProvider) (Widget, error) {
+func CreateGrowWidget(config map[string]interface{}) (Widget, error) {
 	widget := &GrowWidget{
 		BaseWidget: &BaseWidget{
 			ID:       generateWidgetID(),

@@ -16,7 +16,7 @@ type ClockData struct {
 	Display string   `json:"display"`
 }
 
-func CreateClockWidget(config map[string]interface{}, service ServiceProvider) (Widget, error) {
+func CreateClockWidget(config map[string]interface{}) (Widget, error) {
 	format := getStringConfig(config, "format", "15:04:05")
 	
 	widget := &ClockWidget{

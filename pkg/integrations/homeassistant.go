@@ -13,6 +13,10 @@ import (
 	"github.com/mntndev/dash/pkg/config"
 )
 
+type HAProvider interface {
+	GetHAClient() *HomeAssistantClient
+}
+
 type HomeAssistantClient struct {
 	config       *config.HomeAssistantConfig
 	conn         *websocket.Conn
@@ -21,7 +25,7 @@ type HomeAssistantClient struct {
 	msgID        int
 	callbacks    map[int]func(HAMessage)
 	mu           sync.RWMutex
-	writeMu      sync.Mutex  // Protects WebSocket writes
+	writeMu      sync.Mutex
 	ctx          context.Context
 	cancel       context.CancelFunc
 	eventChan    chan HAEvent
@@ -85,8 +89,6 @@ func (ha *HomeAssistantClient) Connect() error {
 	ha.connected = true
 
 	go ha.readMessages()
-
-	// Wait for authentication to complete
 	select {
 	case success := <-ha.authChan:
 		if !success {
@@ -138,8 +140,7 @@ func (ha *HomeAssistantClient) readMessages() {
 		default:
 			var msg HAMessage
 			if err := ha.conn.ReadJSON(&msg); err != nil {
-				log.Printf("Error reading message: %v", err)
-				// Signal authentication failure if we're not authenticated yet
+					log.Printf("Error reading message: %v", err)
 				if !ha.authenticated {
 					select {
 					case ha.authChan <- false:
@@ -156,8 +157,6 @@ func (ha *HomeAssistantClient) readMessages() {
 
 func (ha *HomeAssistantClient) handleMessage(msg HAMessage) {
 	log.Printf("Received message: type=%s, id=%d", msg.Type, msg.ID)
-	
-	// Handle authentication messages
 	if msg.Type == "auth_required" {
 		if err := ha.authenticate(msg); err != nil {
 			log.Printf("Authentication error: %v", err)
@@ -189,7 +188,6 @@ func (ha *HomeAssistantClient) handleMessage(msg HAMessage) {
 		return
 	}
 
-	// Handle callback messages (those with IDs)
 	if msg.ID > 0 {
 		ha.mu.RLock()
 		callback, exists := ha.callbacks[msg.ID]
@@ -203,7 +201,6 @@ func (ha *HomeAssistantClient) handleMessage(msg HAMessage) {
 		}
 	}
 
-	// Handle event messages
 	if msg.Type == "event" && msg.Event != nil {
 		select {
 		case ha.eventChan <- *msg.Event:

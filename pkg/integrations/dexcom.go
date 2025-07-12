@@ -11,6 +11,10 @@ import (
 	"github.com/tgiv014/dexcom-share"
 )
 
+type DexcomProvider interface {
+	GetDexcomClient() *DexcomClient
+}
+
 type DexcomClient struct {
 	config       *config.DexcomConfig
 	client       *dexcomshare.Client
@@ -29,7 +33,7 @@ func NewDexcomClient(config *config.DexcomConfig) *DexcomClient {
 		config:         config,
 		ctx:            ctx,
 		cancel:         cancel,
-		updateInterval: 1 * time.Minute, // Check every minute, but data only updates every 5 minutes
+		updateInterval: 1 * time.Minute,
 	}
 }
 
@@ -44,7 +48,6 @@ func (dc *DexcomClient) Connect() error {
 	dc.connected = true
 	dc.mu.Unlock()
 
-	// Start the update loop
 	go dc.updateLoop()
 
 	log.Println("Dexcom client connected successfully")
@@ -52,7 +55,6 @@ func (dc *DexcomClient) Connect() error {
 }
 
 func (dc *DexcomClient) updateLoop() {
-	// Initial fetch
 	if err := dc.fetchGlucoseData(); err != nil {
 		log.Printf("Error fetching initial glucose data: %v", err)
 	}
@@ -82,7 +84,6 @@ func (dc *DexcomClient) fetchGlucoseData() error {
 		return fmt.Errorf("Dexcom client not connected")
 	}
 
-	// Get the latest glucose reading (1 entry for 1440 minutes = 24 hours range)
 	entries, err := client.ReadGlucose(1440, 1)
 	if err != nil {
 		return fmt.Errorf("failed to read glucose: %w", err)
@@ -113,7 +114,6 @@ func (dc *DexcomClient) GetLatestGlucose() (*dexcomshare.GlucoseEntry, time.Time
 		return nil, time.Time{}, fmt.Errorf("no glucose data available")
 	}
 
-	// Return a copy to avoid race conditions
 	entry := *dc.lastEntry
 	return &entry, dc.lastUpdate, nil
 }

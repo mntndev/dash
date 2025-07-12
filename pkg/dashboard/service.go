@@ -57,8 +57,6 @@ func NewDashboardService(config *config.Config, eventEmitter EventEmitter) *Dash
 		updateInterval: 5 * time.Second,
 	}
 	
-	// Defer widget manager creation until Initialize() is called
-	// This avoids creating widgets before integration clients are set up
 	
 	return service
 }
@@ -67,15 +65,13 @@ func (ds *DashboardService) Initialize() error {
 	ds.mu.Lock()
 	defer ds.mu.Unlock()
 	
-	// Create widget manager now that service is being initialized
-	widgetFactory := widgets.NewDefaultWidgetFactory(ds)
+	widgetFactory := widgets.NewDefaultWidgetFactory(ds, ds)
 	widgetManager := widgets.NewWidgetManager(widgetFactory)
 	ds.widgetManager = widgetManager
 	
 	if ds.config.Integrations.HomeAssistant != nil {
 		log.Printf("Initializing Home Assistant client...")
 		ds.haClient = integrations.NewHomeAssistantClient(ds.config.Integrations.HomeAssistant)
-		// Connect to Home Assistant in a separate goroutine to avoid blocking
 		go func() {
 			log.Printf("Connecting to Home Assistant...")
 			if err := ds.haClient.Connect(); err != nil {
@@ -93,7 +89,6 @@ func (ds *DashboardService) Initialize() error {
 	if ds.config.Integrations.Dexcom != nil {
 		log.Printf("Initializing Dexcom client...")
 		ds.dexcomClient = integrations.NewDexcomClient(ds.config.Integrations.Dexcom)
-		// Connect to Dexcom in a separate goroutine to avoid blocking
 		go func() {
 			log.Printf("Connecting to Dexcom...")
 			if err := ds.dexcomClient.Connect(); err != nil {
@@ -113,10 +108,8 @@ func (ds *DashboardService) Initialize() error {
 	log.Printf("Starting update loop...")
 	go ds.updateLoop()
 	
-	// Mark as initialized
 	ds.initialized = true
 	
-	// Emit initial dashboard data now that we're fully initialized
 	dashboardData := ds.getDashboardData()
 	ds.eventEmitter.Emit("dashboard_update", dashboardData)
 	
@@ -138,9 +131,7 @@ func (ds *DashboardService) createWidgetFromConfig(config config.WidgetConfig, i
 	}
 	log.Printf("Successfully created widget: %s", widgetID)
 	
-	// Widget now has access to clients via ServiceProvider interface - no manual injection needed
 	
-	// Create children for layout widgets
 	for i, childConfig := range config.Children {
 		childID := fmt.Sprintf("%s_child_%d", idPrefix, i)
 		if err := ds.createWidgetFromConfig(childConfig, childID); err != nil {
@@ -201,7 +192,6 @@ func (ds *DashboardService) handleHAEvents() {
 func (ds *DashboardService) getDashboardData() DashboardData {
 	status := make(map[string]interface{})
 	
-	// Check if service is initialized
 	if !ds.initialized {
 		return DashboardData{
 			Title:  ds.config.Dashboard.Title,
@@ -222,7 +212,6 @@ func (ds *DashboardService) getDashboardData() DashboardData {
 		status["dexcom"] = ds.dexcomClient.IsConnected()
 	}
 	
-	// Build the root widget
 	rootWidget := ds.buildWidgetFromID("root", ds.config.Dashboard.Widget)
 	
 	return DashboardData{
@@ -244,7 +233,6 @@ func (ds *DashboardService) buildWidgetFromID(idPrefix string, config config.Wid
 			LastUpdate: ds.getWidgetLastUpdate(widget),
 		}
 		
-		// Add children if this is a container widget
 		if widget.IsContainer() && len(config.Children) > 0 {
 			children := make([]WidgetData, len(config.Children))
 			for i, childConfig := range config.Children {
@@ -257,7 +245,6 @@ func (ds *DashboardService) buildWidgetFromID(idPrefix string, config config.Wid
 		return widgetData
 	}
 	
-	// Return empty widget data if widget not found
 	return WidgetData{
 		ID:   widgetID,
 		Type: config.Type,
@@ -305,7 +292,6 @@ func (ds *DashboardService) GetDashboardData() DashboardData {
 	return ds.getDashboardData()
 }
 
-// ServiceProvider interface implementation
 func (ds *DashboardService) GetHAClient() *integrations.HomeAssistantClient {
 	ds.mu.RLock()
 	defer ds.mu.RUnlock()
@@ -385,8 +371,7 @@ func (ds *DashboardService) ReloadConfig(configPath string) error {
 		ds.dexcomClient = nil
 	}
 	
-	// Recreate widget manager with updated service
-	widgetFactory := widgets.NewDefaultWidgetFactory(ds)
+	widgetFactory := widgets.NewDefaultWidgetFactory(ds, ds)
 	ds.widgetManager = widgets.NewWidgetManager(widgetFactory)
 	
 	return ds.Initialize()

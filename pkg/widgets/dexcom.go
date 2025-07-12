@@ -10,7 +10,7 @@ import (
 
 type DexcomWidget struct {
 	*BaseWidget
-	DexcomClient *integrations.DexcomClient
+	dexcomProvider integrations.DexcomProvider
 }
 
 type DexcomData struct {
@@ -20,58 +20,53 @@ type DexcomData struct {
 	Unit      string    `json:"unit"`
 }
 
-func CreateDexcomWidget(config map[string]interface{}, service ServiceProvider) (Widget, error) {
+func CreateDexcomWidget(config map[string]interface{}, dexcomProvider integrations.DexcomProvider) (Widget, error) {
 	widget := &DexcomWidget{
 		BaseWidget: &BaseWidget{
 			ID:       generateWidgetID(),
 			Type:     "dexcom",
 			Config:   config,
 		},
-		DexcomClient: service.GetDexcomClient(),
+		dexcomProvider: dexcomProvider,
 	}
 
 	return widget, nil
 }
 
 func (w *DexcomWidget) Update(ctx context.Context) error {
-	if w.DexcomClient == nil || !w.DexcomClient.IsConnected() {
+	dexcomClient := w.dexcomProvider.GetDexcomClient()
+	if dexcomClient == nil || !dexcomClient.IsConnected() {
 		return fmt.Errorf("Dexcom client not connected")
 	}
 
-	// Get the latest glucose reading from the integration client
-	latest, lastUpdate, err := w.DexcomClient.GetLatestGlucose()
+	latest, lastUpdate, err := dexcomClient.GetLatestGlucose()
 	if err != nil {
 		return fmt.Errorf("failed to get glucose data: %w", err)
 	}
 
-	// Convert trend to human-readable string
 	var trendString string
 	switch latest.Trend {
 	case "1":
-		trendString = "↗↗" // Double up
+		trendString = "↗↗"
 	case "2":
-		trendString = "↗"  // Single up
+		trendString = "↗"
 	case "3":
-		trendString = "↗"  // Forty-five up
+		trendString = "↗"
 	case "4":
-		trendString = "→"  // Flat
+		trendString = "→"
 	case "5":
-		trendString = "↘"  // Forty-five down
+		trendString = "↘"
 	case "6":
-		trendString = "↘"  // Single down
+		trendString = "↘"
 	case "7":
-		trendString = "↘↘" // Double down
+		trendString = "↘↘"
 	default:
 		trendString = "?"
 	}
 
-	// Parse the timestamp string - Dexcom uses .NET JSON date format
 	var timestamp time.Time
 	if latest.ST != "" {
-		// Extract the timestamp from .NET JSON date format: /Date(1136239445000)/
-		// For now, let's just use the current time and log the actual format for debugging
 		timestamp = time.Now()
-		// TODO: Implement proper .NET JSON date parsing
 	} else {
 		timestamp = time.Now()
 	}
@@ -86,4 +81,3 @@ func (w *DexcomWidget) Update(ctx context.Context) error {
 	return nil
 }
 
-// SetDexcomClient method removed - client is now injected during widget creation
