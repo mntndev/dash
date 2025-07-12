@@ -1,6 +1,6 @@
 <script lang="ts">
-    import type { WidgetData, HAButtonData } from "../../types";
-    import { DashboardAppService } from "../../../../bindings/github.com/mntndev/dash";
+    import type { WidgetData, HAButtonData } from "../types";
+    import { DashboardAppService } from "../../../bindings/github.com/mntndev/dash";
     export let widget: WidgetData;
 
     let isLoading = false;
@@ -24,7 +24,7 @@
     }
 </script>
 
-<div class="flex flex-col h-full">
+<div class="p-4 flex flex-col flex-none">
     <div class="mb-4">
         <h3 class="text-lg md:text-xl font-semibold m-0">{buttonLabel}</h3>
         <div class="text-xs text-gray-500 mt-1 font-mono">

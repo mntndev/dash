@@ -83,11 +83,11 @@ func NewDefaultWidgetFactory() *DefaultWidgetFactory {
 	
 	factory.RegisterCreator("home_assistant.entity", CreateHAEntityWidget)
 	factory.RegisterCreator("home_assistant.button", CreateHAButtonWidget)
+	factory.RegisterCreator("home_assistant.switch", CreateHASwitchWidget)
 	factory.RegisterCreator("clock", CreateClockWidget)
 	factory.RegisterCreator("horizontal_split", CreateHorizontalSplitWidget)
 	factory.RegisterCreator("vertical_split", CreateVerticalSplitWidget)
-	factory.RegisterCreator("vstack", CreateVStackWidget)
-	factory.RegisterCreator("hstack", CreateHStackWidget)
+	factory.RegisterCreator("grow", CreateGrowWidget)
 	
 	return factory
 }
@@ -158,4 +158,31 @@ func (wm *WidgetManager) UpdateAll(ctx context.Context) error {
 		}
 	}
 	return nil
+}
+
+// GrowWidget - A widget that applies flex-grow behavior to itself or its child
+type GrowWidget struct {
+	*BaseWidget
+}
+
+func CreateGrowWidget(config map[string]interface{}) (Widget, error) {
+	widget := &GrowWidget{
+		BaseWidget: &BaseWidget{
+			ID:       generateWidgetID(),
+			Type:     "grow",
+			Config:   config,
+			Children: []Widget{},
+		},
+	}
+	
+	return widget, nil
+}
+
+func (w *GrowWidget) Update(ctx context.Context) error {
+	w.LastUpdate = time.Now()
+	return nil
+}
+
+func (w *GrowWidget) IsContainer() bool {
+	return len(w.Children) > 0
 }

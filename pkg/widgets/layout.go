@@ -16,15 +16,6 @@ type VerticalSplitWidget struct {
 	Sizes []float64 // Relative sizes for each child
 }
 
-// VStackWidget represents a vertical stack layout container (no sizes needed)
-type VStackWidget struct {
-	*BaseWidget
-}
-
-// HStackWidget represents a horizontal stack layout container (no sizes needed)
-type HStackWidget struct {
-	*BaseWidget
-}
 
 type LayoutData struct {
 	Type     string    `json:"type"`
@@ -78,31 +69,6 @@ func CreateVerticalSplitWidget(config map[string]interface{}) (Widget, error) {
 	return widget, nil
 }
 
-func CreateVStackWidget(config map[string]interface{}) (Widget, error) {
-	widget := &VStackWidget{
-		BaseWidget: &BaseWidget{
-			ID:       generateWidgetID(),
-			Type:     "vstack",
-			Config:   config,
-			Children: []Widget{},
-		},
-	}
-	
-	return widget, nil
-}
-
-func CreateHStackWidget(config map[string]interface{}) (Widget, error) {
-	widget := &HStackWidget{
-		BaseWidget: &BaseWidget{
-			ID:       generateWidgetID(),
-			Type:     "hstack",
-			Config:   config,
-			Children: []Widget{},
-		},
-	}
-	
-	return widget, nil
-}
 
 func (w *HorizontalSplitWidget) Update(ctx context.Context) error {
 	w.Data = &LayoutData{
@@ -122,21 +88,6 @@ func (w *VerticalSplitWidget) Update(ctx context.Context) error {
 	return nil
 }
 
-func (w *VStackWidget) Update(ctx context.Context) error {
-	w.Data = &LayoutData{
-		Type:     "vstack",
-		Children: w.Children,
-	}
-	return nil
-}
-
-func (w *HStackWidget) Update(ctx context.Context) error {
-	w.Data = &LayoutData{
-		Type:     "hstack",
-		Children: w.Children,
-	}
-	return nil
-}
 
 func (w *HorizontalSplitWidget) IsContainer() bool {
 	return true
@@ -146,13 +97,6 @@ func (w *VerticalSplitWidget) IsContainer() bool {
 	return true
 }
 
-func (w *VStackWidget) IsContainer() bool {
-	return true
-}
-
-func (w *HStackWidget) IsContainer() bool {
-	return true
-}
 
 func (w *HorizontalSplitWidget) Configure(config map[string]interface{}) error {
 	w.BaseWidget.Configure(config)
@@ -188,12 +132,3 @@ func (w *VerticalSplitWidget) Configure(config map[string]interface{}) error {
 	return nil
 }
 
-func (w *VStackWidget) Configure(config map[string]interface{}) error {
-	w.BaseWidget.Configure(config)
-	return nil
-}
-
-func (w *HStackWidget) Configure(config map[string]interface{}) error {
-	w.BaseWidget.Configure(config)
-	return nil
-}

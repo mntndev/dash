@@ -6,15 +6,15 @@ dashboard:
     config:
       sizes: [0.3, 0.7]
     children:
-      - type: "vstack"
+      - type: "vertical_split"
         children:
           - type: "clock"
             config:
               format: "15:04:05"
-          - type: "home_assistant.entity"
+          - type: "home_assistant.switch"
             config:
-              entity_id: "sensor.temperature"
-      - type: "hstack"
+              entity_id: "switch.living_room_lights"
+      - type: "horizontal_split"
         children:
           - type: "home_assistant.button"
             config:

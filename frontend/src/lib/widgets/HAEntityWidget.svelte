@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { WidgetData, HAEntityData } from '../../types';
+  import type { WidgetData, HAEntityData } from '../types';
 
   export let widget: WidgetData;
   
@@ -8,7 +8,7 @@
   $: lastUpdated = entityData?.last_updated ? new Date(entityData.last_updated).toLocaleString() : 'Never';
 </script>
 
-<div class="flex flex-col h-full">
+<div class="p-4 flex flex-col flex-none">
   <div class="mb-4">
     <h3 class="text-lg md:text-xl font-semibold m-0 capitalize">{entityName}</h3>
     <div class="text-xs text-gray-500 mt-1 font-mono">{entityData?.entity_id || 'unknown'}</div>

@@ -233,7 +233,15 @@ func (ds *DashboardService) getWidgetLastUpdate(widget widgets.Widget) time.Time
 		if w.BaseWidget != nil {
 			return w.BaseWidget.LastUpdate
 		}
+	case *widgets.HASwitchWidget:
+		if w.BaseWidget != nil {
+			return w.BaseWidget.LastUpdate
+		}
 	case *widgets.ClockWidget:
+		if w.BaseWidget != nil {
+			return w.BaseWidget.LastUpdate
+		}
+	case *widgets.GrowWidget:
 		if w.BaseWidget != nil {
 			return w.BaseWidget.LastUpdate
 		}
@@ -258,6 +266,10 @@ func (ds *DashboardService) TriggerWidget(widgetID string) error {
 	
 	if buttonWidget, ok := widget.(*widgets.HAButtonWidget); ok {
 		return buttonWidget.Trigger()
+	}
+	
+	if switchWidget, ok := widget.(*widgets.HASwitchWidget); ok {
+		return switchWidget.Trigger()
 	}
 	
 	return fmt.Errorf("widget %s does not support triggering", widgetID)
