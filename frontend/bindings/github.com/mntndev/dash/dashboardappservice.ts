@@ -9,6 +9,10 @@ export function GetDashboardData(): $CancellablePromise<string> {
     return $Call.ByID(550438918);
 }
 
+export function IsFullscreenEnabled(): $CancellablePromise<boolean> {
+    return $Call.ByID(3360849216);
+}
+
 export function ReloadConfig(): $CancellablePromise<void> {
     return $Call.ByID(3284817101);
 }

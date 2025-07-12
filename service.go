@@ -11,6 +11,7 @@ import (
 type DashboardAppService struct {
 	dashboardService *dashboard.DashboardService
 	eventEmitter     *WailsEventEmitter
+	config           *config.Config
 }
 
 type WailsEventEmitter struct {
@@ -25,24 +26,25 @@ func (w *WailsEventEmitter) Emit(event string, data interface{}) {
 
 func NewDashboardAppService(app *application.App) *DashboardAppService {
 	eventEmitter := &WailsEventEmitter{app: app}
-	
+
 	configPath := config.GetDefaultConfigPath()
 	cfg, err := config.LoadConfig(configPath)
 	if err != nil {
 		log.Printf("Failed to load config: %v. Using default config.", err)
 		cfg = getDefaultConfig()
 	}
-	
+
 	dashboardService := dashboard.NewDashboardService(cfg, eventEmitter)
 	go func() {
 		if err := dashboardService.Initialize(); err != nil {
 			log.Printf("Failed to initialize dashboard service: %v", err)
 		}
 	}()
-	
+
 	return &DashboardAppService{
 		dashboardService: dashboardService,
 		eventEmitter:     eventEmitter,
+		config:           cfg,
 	}
 }
 
@@ -60,6 +62,10 @@ func (s *DashboardAppService) SetLightBrightness(widgetID string, brightness int
 
 func (s *DashboardAppService) ReloadConfig() error {
 	return s.dashboardService.ReloadConfig(config.GetDefaultConfigPath())
+}
+
+func (s *DashboardAppService) IsFullscreenEnabled() bool {
+	return s.config.Dashboard.Fullscreen
 }
 
 func getDefaultConfig() *config.Config {

@@ -9,7 +9,6 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
-
 //go:embed all:frontend/dist
 var assets embed.FS
 
@@ -26,17 +25,24 @@ func main() {
 	})
 
 	dashService := NewDashboardAppService(app)
-	
+
 	app.RegisterService(application.NewService(dashService))
 
 	log.Println("Creating window...")
 	window := app.Window.New()
 	log.Println("Window created with defaults")
-	
+
 	window.SetTitle("Dash - Dashboard")
-	window.SetSize(1200, 800)
-	window.Center()
-	
+
+	// Check if fullscreen is enabled in config
+	if dashService.IsFullscreenEnabled() {
+		log.Println("Fullscreen mode enabled")
+		window.Fullscreen()
+	} else {
+		window.SetSize(1200, 800)
+		window.Center()
+	}
+
 	log.Println("Window configured, showing...")
 	window.Show()
 	log.Println("Window show() called")

@@ -3,7 +3,6 @@ package widgets
 import (
 	"context"
 	"fmt"
-	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -17,13 +16,13 @@ type DexcomWidget struct {
 }
 
 type DexcomData struct {
-	Value         int              `json:"value"`
-	Trend         string           `json:"trend"`
-	Timestamp     time.Time        `json:"timestamp"`
-	Unit          string           `json:"unit"`
-	Historical    []DexcomReading  `json:"historical,omitempty"`
-	LowThreshold  int              `json:"low_threshold"`
-	HighThreshold int              `json:"high_threshold"`
+	Value         int             `json:"value"`
+	Trend         string          `json:"trend"`
+	Timestamp     time.Time       `json:"timestamp"`
+	Unit          string          `json:"unit"`
+	Historical    []DexcomReading `json:"historical,omitempty"`
+	LowThreshold  int             `json:"low_threshold"`
+	HighThreshold int             `json:"high_threshold"`
 }
 
 type DexcomReading struct {
@@ -35,9 +34,9 @@ type DexcomReading struct {
 func CreateDexcomWidget(config map[string]interface{}, dexcomProvider integrations.DexcomProvider) (Widget, error) {
 	widget := &DexcomWidget{
 		BaseWidget: &BaseWidget{
-			ID:       generateWidgetID(),
-			Type:     "dexcom",
-			Config:   config,
+			ID:     generateWidgetID(),
+			Type:   "dexcom",
+			Config: config,
 		},
 		dexcomProvider: dexcomProvider,
 	}
@@ -81,11 +80,9 @@ func (w *DexcomWidget) Update(ctx context.Context) error {
 	// Try WT first, then DT as fallback
 	timestamp := parseDexcomTimestamp(latest.WT)
 	if timestamp.IsZero() {
-		log.Printf("WT timestamp failed, trying DT: %s", latest.DT)
 		timestamp = parseDexcomTimestamp(latest.DT)
 	}
 	if timestamp.IsZero() {
-		log.Printf("Both WT and DT timestamps failed, using current time")
 		timestamp = time.Now()
 	}
 
@@ -93,10 +90,8 @@ func (w *DexcomWidget) Update(ctx context.Context) error {
 	historical, err := dexcomClient.GetHistoricalGlucose()
 	var historicalReadings []DexcomReading
 	if err != nil {
-		log.Printf("Failed to get historical glucose data: %v", err)
 		historicalReadings = make([]DexcomReading, 0)
 	} else {
-		log.Printf("Retrieved %d historical glucose readings", len(historical))
 		// Convert historical data
 		historicalReadings = make([]DexcomReading, 0, len(historical))
 		for _, entry := range historical {
@@ -106,7 +101,6 @@ func (w *DexcomWidget) Update(ctx context.Context) error {
 				histTimestamp = parseDexcomTimestamp(entry.DT)
 			}
 			if histTimestamp.IsZero() {
-				log.Printf("Skipping entry with invalid timestamps - WT: %s, DT: %s", entry.WT, entry.DT)
 				continue
 			}
 
@@ -117,7 +111,6 @@ func (w *DexcomWidget) Update(ctx context.Context) error {
 				Timestamp: histTimestamp,
 			})
 		}
-		log.Printf("Successfully converted %d historical readings", len(historicalReadings))
 	}
 
 	w.Data = &DexcomData{
@@ -137,9 +130,9 @@ func parseDexcomTimestamp(dateStr string) time.Time {
 	if dateStr == "" {
 		return time.Time{}
 	}
-	
+
 	var timestampStr string
-	
+
 	// Dexcom timestamps can come in different formats: "/Date(milliseconds)/" or "Date(milliseconds)"
 	if strings.HasPrefix(dateStr, "/Date(") && strings.HasSuffix(dateStr, ")/") {
 		// Format: /Date(milliseconds)/
@@ -150,24 +143,22 @@ func parseDexcomTimestamp(dateStr string) time.Time {
 		timestampStr = strings.TrimPrefix(dateStr, "Date(")
 		timestampStr = strings.TrimSuffix(timestampStr, ")")
 	} else {
-		log.Printf("Invalid Dexcom timestamp format: %s", dateStr)
 		return time.Time{}
 	}
-	
+
 	// Handle timezone offset if present (like "-0600")
 	if idx := strings.LastIndex(timestampStr, "+"); idx > 0 {
 		timestampStr = timestampStr[:idx]
 	} else if idx := strings.LastIndex(timestampStr, "-"); idx > 0 {
 		timestampStr = timestampStr[:idx]
 	}
-	
+
 	// Parse milliseconds
 	milliseconds, err := strconv.ParseInt(timestampStr, 10, 64)
 	if err != nil {
-		log.Printf("Failed to parse Dexcom timestamp %s: %v", dateStr, err)
 		return time.Time{}
 	}
-	
+
 	// Convert to time.Time (Dexcom uses milliseconds since Unix epoch)
 	return time.Unix(milliseconds/1000, (milliseconds%1000)*1000000).UTC()
 }
@@ -192,4 +183,3 @@ func formatTrendString(trend string) string {
 		return "?"
 	}
 }
-

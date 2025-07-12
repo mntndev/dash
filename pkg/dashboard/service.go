@@ -54,7 +54,7 @@ func NewDashboardService(config *config.Config, eventEmitter EventEmitter) *Dash
 		eventEmitter:   eventEmitter,
 		ctx:            ctx,
 		cancel:         cancel,
-		updateInterval: 5 * time.Second,
+		updateInterval: 1 * time.Second,
 	}
 	
 	

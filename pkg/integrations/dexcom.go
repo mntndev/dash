@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/mntndev/dash/pkg/config"
-	"github.com/tgiv014/dexcom-share"
+	dexcomshare "github.com/tgiv014/dexcom-share"
 )
 
 type DexcomProvider interface {
@@ -54,14 +54,11 @@ func (dc *DexcomClient) Connect() error {
 
 	go dc.updateLoop()
 
-	log.Println("Dexcom client connected successfully")
 	return nil
 }
 
 func (dc *DexcomClient) updateLoop() {
-	if err := dc.fetchGlucoseData(); err != nil {
-		log.Printf("Error fetching initial glucose data: %v", err)
-	}
+	dc.fetchGlucoseData()
 
 	ticker := time.NewTicker(dc.updateInterval)
 	defer ticker.Stop()
@@ -71,9 +68,7 @@ func (dc *DexcomClient) updateLoop() {
 		case <-dc.ctx.Done():
 			return
 		case <-ticker.C:
-			if err := dc.fetchGlucoseData(); err != nil {
-				log.Printf("Error fetching glucose data: %v", err)
-			}
+			dc.fetchGlucoseData()
 		}
 	}
 }
@@ -88,6 +83,7 @@ func (dc *DexcomClient) fetchGlucoseData() error {
 		return fmt.Errorf("Dexcom client not connected")
 	}
 
+	log.Printf("Making Dexcom API request...")
 	entries, err := client.ReadGlucose(180, dc.maxHistory) // 3 hours instead of 24
 	if err != nil {
 		return fmt.Errorf("failed to read glucose: %w", err)
@@ -103,7 +99,6 @@ func (dc *DexcomClient) fetchGlucoseData() error {
 	dc.historicalData = entries
 	dc.mu.Unlock()
 
-	log.Printf("Updated glucose data: %d mg/dL, trend: %s, historical entries: %d", entries[0].Value, entries[0].Trend, len(entries))
 	return nil
 }
 
@@ -128,12 +123,9 @@ func (dc *DexcomClient) GetHistoricalGlucose() ([]dexcomshare.GlucoseEntry, erro
 	defer dc.mu.RUnlock()
 
 	if !dc.connected {
-		log.Printf("GetHistoricalGlucose: Dexcom client not connected")
 		return nil, fmt.Errorf("Dexcom client not connected")
 	}
 
-	log.Printf("GetHistoricalGlucose: Returning %d historical entries", len(dc.historicalData))
-	
 	// Return a copy of the historical data
 	historicalCopy := make([]dexcomshare.GlucoseEntry, len(dc.historicalData))
 	copy(historicalCopy, dc.historicalData)

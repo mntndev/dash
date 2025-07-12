@@ -13,6 +13,7 @@ type Widget interface {
 	GetType() string
 	GetData() interface{}
 	Update(ctx context.Context) error
+	ShouldUpdate() bool
 	Configure(config map[string]interface{}) error
 	SetID(id string)
 	GetChildren() []Widget
@@ -84,6 +85,11 @@ func (w *BaseWidget) IsContainer() bool {
 
 func (w *BaseWidget) Update(ctx context.Context) error {
 	return nil
+}
+
+func (w *BaseWidget) ShouldUpdate() bool {
+	// Default implementation: update every time
+	return true
 }
 
 type WidgetCreator func(config map[string]interface{}, haProvider integrations.HAProvider, dexcomProvider integrations.DexcomProvider) (Widget, error)
@@ -226,8 +232,11 @@ func (wm *WidgetManager) RemoveWidget(id string) {
 
 func (wm *WidgetManager) UpdateAll(ctx context.Context) error {
 	for id, widget := range wm.widgets {
-		if err := widget.Update(ctx); err != nil {
-			return fmt.Errorf("failed to update widget %s: %w", id, err)
+		// Only update widgets that need updating (reactive updates)
+		if widget.ShouldUpdate() {
+			if err := widget.Update(ctx); err != nil {
+				return fmt.Errorf("failed to update widget %s: %w", id, err)
+			}
 		}
 	}
 	return nil
