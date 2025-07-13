@@ -17,6 +17,7 @@ type ClockWidget struct {
 	*BaseWidget
 	Format     string
 	lastSecond int
+	provider   Provider
 }
 
 type ClockData struct {
@@ -25,7 +26,7 @@ type ClockData struct {
 	Display string    `json:"display"`
 }
 
-func CreateClockWidget(id string, config ast.Node, children []Widget) (Widget, error) {
+func CreateClockWidget(id string, config ast.Node, children []Widget, provider Provider) (Widget, error) {
 	// Parse config using NodeToValue
 	var clockConfig ClockConfig
 	if config != nil {
@@ -48,6 +49,7 @@ func CreateClockWidget(id string, config ast.Node, children []Widget) (Widget, e
 		},
 		Format:     format,
 		lastSecond: -1, // Initialize to -1 to force first update
+		provider:   provider,
 	}
 
 	return widget, nil
@@ -85,6 +87,14 @@ func (w *ClockWidget) startClockUpdater(ctx context.Context) {
 				Display: now.Format(w.Format),
 			}
 			w.LastUpdate = now
+			
+			// Emit widget data update event
+			if w.provider != nil {
+				w.provider.Emit("widget_data_update", map[string]interface{}{
+					"widget_id": w.ID,
+					"data":      w.Data,
+				})
+			}
 		}
 	}
 }

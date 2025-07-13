@@ -144,7 +144,7 @@ func registerBuiltinWidgets(registry *WidgetRegistry) {
 	registry.Register("dexcom", CreateDexcomWidget)
 
 	registry.Register("clock", func(id string, config ast.Node, children []Widget, provider Provider) (Widget, error) {
-		return CreateClockWidget(id, config, children)
+		return CreateClockWidget(id, config, children, provider)
 	})
 
 	registry.Register("horizontal_split", func(id string, config ast.Node, children []Widget, provider Provider) (Widget, error) {
