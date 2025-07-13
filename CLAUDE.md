@@ -50,10 +50,15 @@ This is a **Wails v3** desktop application combining:
 3. Real-time communication via events (e.g., time updates from Go to frontend)
 4. Frontend calls Go services using generated TypeScript bindings
 
-### Testing
+### Testing & Code Quality
 
-- Frontend: `cd frontend && npm run check` for Svelte type checking
-- No test runner currently configured - add tests as needed
+- **Go Tests**: `task test` or `go test ./pkg/...` - Run all Go unit tests
+- **Test Coverage**: `task test:coverage` - Generate coverage report and HTML visualization
+- **Linting**: `task lint` - Run golangci-lint on Go codebase
+- **Auto-fix**: `task lint:fix` - Run linter with automatic fixes
+- **New Code**: `task lint:new` - Lint only new/changed code since last commit
+- **Quality Check**: `task check` - Run both tests and linting
+- **Frontend**: `cd frontend && npm run check` - Svelte type checking
 
 ### Logging and Debugging
 

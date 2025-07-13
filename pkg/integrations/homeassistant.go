@@ -17,18 +17,18 @@ type HAProvider interface {
 }
 
 type HomeAssistantClient struct {
-	config            *config.HomeAssistantConfig
-	conn              *websocket.Conn
-	connected         bool
-	authenticated     bool
-	msgID             int
-	callbacks         map[int]func(HAMessage)
-	mu                sync.RWMutex
-	writeMu           sync.Mutex
-	ctx               context.Context
-	cancel            context.CancelFunc
-	eventChan         chan HAEvent
-	authChan          chan bool
+	config        *config.HomeAssistantConfig
+	conn          *websocket.Conn
+	connected     bool
+	authenticated bool
+	msgID         int
+	callbacks     map[int]func(HAMessage)
+	mu            sync.RWMutex
+	writeMu       sync.Mutex
+	ctx           context.Context
+	cancel        context.CancelFunc
+	eventChan     chan HAEvent
+	authChan      chan bool
 	*SubscriptionManager
 }
 
@@ -37,8 +37,8 @@ type HAMessage struct {
 	Type    string                 `json:"type"`
 	Success bool                   `json:"success,omitempty"`
 	Result  interface{}            `json:"result,omitempty"`
-	Error   *HAError              `json:"error,omitempty"`
-	Event   *HAEvent              `json:"event,omitempty"`
+	Error   *HAError               `json:"error,omitempty"`
+	Event   *HAEvent               `json:"event,omitempty"`
 	Data    map[string]interface{} `json:",inline"`
 }
 
@@ -63,7 +63,7 @@ type HAEntityState struct {
 }
 
 type StateChangeEvent struct {
-	EntityID string        `json:"entity_id"`
+	EntityID string         `json:"entity_id"`
 	NewState *HAEntityState `json:"new_state"`
 	OldState *HAEntityState `json:"old_state"`
 }
@@ -294,8 +294,8 @@ func (ha *HomeAssistantClient) GetStates() ([]HAEntityState, error) {
 
 func (ha *HomeAssistantClient) CallService(domain, service string, data map[string]interface{}) error {
 	id, err := ha.sendMessage("call_service", map[string]interface{}{
-		"domain":  domain,
-		"service": service,
+		"domain":       domain,
+		"service":      service,
 		"service_data": data,
 	})
 	if err != nil {
@@ -365,14 +365,14 @@ func (sm *SubscriptionManager) Subscribe(entityID string) (<-chan StateChangeEve
 	defer sm.mu.Unlock()
 
 	ch := make(chan StateChangeEvent, 10)
-	
+
 	if _, exists := sm.subscriptions[entityID]; !exists {
 		if err := sm.haClient.SubscribeEvents("state_changed"); err != nil {
 			close(ch)
 			return nil, fmt.Errorf("failed to subscribe to state_changed events: %w", err)
 		}
 	}
-	
+
 	sm.subscriptions[entityID] = append(sm.subscriptions[entityID], ch)
 	return ch, nil
 }
@@ -389,7 +389,7 @@ func (sm *SubscriptionManager) Unsubscribe(entityID string, ch <-chan StateChang
 				break
 			}
 		}
-		
+
 		if len(sm.subscriptions[entityID]) == 0 {
 			delete(sm.subscriptions, entityID)
 		}
@@ -398,7 +398,7 @@ func (sm *SubscriptionManager) Unsubscribe(entityID string, ch <-chan StateChang
 
 func (sm *SubscriptionManager) eventProcessor() {
 	eventChan := sm.haClient.GetEventChannel()
-	
+
 	for {
 		select {
 		case <-sm.ctx.Done():
@@ -420,13 +420,13 @@ func (sm *SubscriptionManager) processStateChangeEvent(event HAEvent) {
 	}
 
 	var newState, oldState *HAEntityState
-	
+
 	if newStateData, ok := data["new_state"]; ok && newStateData != nil {
 		newStateBytes, _ := json.Marshal(newStateData)
 		newState = &HAEntityState{}
 		json.Unmarshal(newStateBytes, newState)
 	}
-	
+
 	if oldStateData, ok := data["old_state"]; ok && oldStateData != nil {
 		oldStateBytes, _ := json.Marshal(oldStateData)
 		oldState = &HAEntityState{}
@@ -454,7 +454,7 @@ func (sm *SubscriptionManager) processStateChangeEvent(event HAEvent) {
 func (sm *SubscriptionManager) closeAllSubscriptions() {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
-	
+
 	for entityID, subs := range sm.subscriptions {
 		for _, ch := range subs {
 			close(ch)

@@ -9,8 +9,8 @@ import (
 )
 
 type Config struct {
-	Dashboard     DashboardConfig     `yaml:"dashboard"`
-	Integrations  IntegrationsConfig  `yaml:"integrations"`
+	Dashboard    DashboardConfig    `yaml:"dashboard"`
+	Integrations IntegrationsConfig `yaml:"integrations"`
 }
 
 type DashboardConfig struct {
@@ -19,7 +19,6 @@ type DashboardConfig struct {
 	Fullscreen bool         `yaml:"fullscreen"`
 	Widget     WidgetConfig `yaml:"widget"`
 }
-
 
 type WidgetConfig struct {
 	Type     string                 `yaml:"type"`
@@ -107,34 +106,34 @@ func GetDefaultConfigPath() string {
 	return findConfigFile()
 }
 
-// findConfigFile looks for config files in order of preference
+// findConfigFile looks for config files in order of preference.
 func findConfigFile() string {
 	configPaths := getConfigPaths()
-	
+
 	for _, path := range configPaths {
 		if _, err := os.Stat(path); err == nil {
 			return path
 		}
 	}
-	
+
 	// Return the first path (current directory) as default if none found
 	return configPaths[0]
 }
 
-// getConfigPaths returns all possible config file locations in order of preference
+// getConfigPaths returns all possible config file locations in order of preference.
 func getConfigPaths() []string {
 	homeDir, _ := os.UserHomeDir()
-	
+
 	paths := []string{
-		filepath.Join(".", "config.yaml"),                    // Current directory
+		filepath.Join(".", "config.yaml"),                        // Current directory
 		filepath.Join(homeDir, ".config", "dash", "config.yaml"), // XDG config
-		filepath.Join(homeDir, ".dash.yaml"),                // User home
+		filepath.Join(homeDir, ".dash.yaml"),                     // User home
 	}
-	
+
 	// Add system path on Unix-like systems
 	if homeDir != "" && homeDir != "/" {
 		paths = append(paths, "/etc/dash/config.yaml")
 	}
-	
+
 	return paths
 }

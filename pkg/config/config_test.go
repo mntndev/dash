@@ -26,19 +26,19 @@ func TestLoadConfig(t *testing.T) {
 				assert.True(t, config.Dashboard.Fullscreen)
 				assert.Equal(t, "vertical_split", config.Dashboard.Widget.Type)
 				assert.Len(t, config.Dashboard.Widget.Children, 2)
-				
+
 				// Check integrations
 				assert.NotNil(t, config.Integrations.HomeAssistant)
 				assert.Equal(t, "ws://localhost:8123/api/websocket", config.Integrations.HomeAssistant.URL)
 				assert.Equal(t, "test_token_123", config.Integrations.HomeAssistant.Token)
-				
+
 				assert.NotNil(t, config.Integrations.Dexcom)
 				assert.Equal(t, "test_user", config.Integrations.Dexcom.Username)
 				assert.Equal(t, "test_pass", config.Integrations.Dexcom.Password)
-				
+
 				assert.NotNil(t, config.Integrations.Prometheus)
 				assert.Equal(t, "http://localhost:9090", config.Integrations.Prometheus.URL)
-				
+
 				assert.Len(t, config.Integrations.RSS, 1)
 				assert.Equal(t, "https://example.com/feed.xml", config.Integrations.RSS[0].URL)
 				assert.Equal(t, "1h", config.Integrations.RSS[0].RefreshInterval)
@@ -54,7 +54,7 @@ func TestLoadConfig(t *testing.T) {
 				assert.False(t, config.Dashboard.Fullscreen) // Should default to false
 				assert.Equal(t, "clock", config.Dashboard.Widget.Type)
 				assert.Empty(t, config.Dashboard.Widget.Children)
-				
+
 				// Integrations should be nil/empty
 				assert.Nil(t, config.Integrations.HomeAssistant)
 				assert.Nil(t, config.Integrations.Dexcom)
@@ -133,7 +133,7 @@ func TestValidateConfig(t *testing.T) {
 			name: "missing widget type",
 			config: &Config{
 				Dashboard: DashboardConfig{
-					Title: "Test Dashboard",
+					Title:  "Test Dashboard",
 					Widget: WidgetConfig{},
 				},
 			},
@@ -194,8 +194,8 @@ func TestValidateWidget(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name: "empty widget type",
-			widget: WidgetConfig{},
+			name:        "empty widget type",
+			widget:      WidgetConfig{},
 			expectError: true,
 			errorMsg:    "widget type is required",
 		},
@@ -249,30 +249,29 @@ func TestConfigPathFunctions(t *testing.T) {
 	t.Run("get config paths", func(t *testing.T) {
 		paths := getConfigPaths()
 		assert.Contains(t, paths, filepath.Join(".", "config.yaml"))
-		
+
 		homeDir, _ := os.UserHomeDir()
 		if homeDir != "" {
 			expectedHomePath := filepath.Join(homeDir, ".config", "dash", "config.yaml")
 			assert.Contains(t, paths, expectedHomePath)
 		}
 	})
-	
+
 	t.Run("get default config path", func(t *testing.T) {
 		path := GetDefaultConfigPath()
 		assert.NotEmpty(t, path)
 	})
-	
+
 	t.Run("find config file", func(t *testing.T) {
 		path := findConfigFile()
 		assert.NotEmpty(t, path)
 	})
 }
 
-
-// Benchmark tests
+// Benchmark tests.
 func BenchmarkLoadValidConfig(b *testing.B) {
 	path := filepath.Join("testdata", "valid_complete.yaml")
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_, err := LoadConfig(path)
@@ -296,7 +295,7 @@ func BenchmarkValidateConfig(b *testing.B) {
 			},
 		},
 	}
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		err := validateConfig(config)

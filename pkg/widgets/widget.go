@@ -8,7 +8,7 @@ import (
 	"github.com/mntndev/dash/pkg/integrations"
 )
 
-// Provider interface combines all the services widgets might need
+// Provider interface combines all the services widgets might need.
 type Provider interface {
 	GetHAClient() *integrations.HomeAssistantClient
 	GetDexcomClient() *integrations.DexcomClient
@@ -24,7 +24,7 @@ type Widget interface {
 	Close() error
 }
 
-// Capability interfaces for widgets
+// Capability interfaces for widgets.
 type Triggerable interface {
 	Trigger() error
 }

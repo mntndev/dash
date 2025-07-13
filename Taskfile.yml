@@ -32,3 +32,35 @@ tasks:
     cmds:
       - wails3 dev -config ./build/config.yml -port {{.VITE_PORT}}
 
+  lint:
+    summary: Run golangci-lint on the Go codebase
+    cmds:
+      - golangci-lint run
+
+  lint:fix:
+    summary: Run golangci-lint with auto-fixing
+    cmds:
+      - golangci-lint run --fix
+
+  lint:new:
+    summary: Run golangci-lint only on new/changed code
+    cmds:
+      - golangci-lint run --new-from-rev=HEAD~1
+
+  test:
+    summary: Run all Go tests
+    cmds:
+      - go test ./pkg/...
+
+  test:coverage:
+    summary: Run tests with coverage report
+    cmds:
+      - go test ./pkg/... -coverprofile=coverage.out
+      - go tool cover -html=coverage.out -o coverage.html
+
+  check:
+    summary: Run all quality checks (test + lint)
+    deps:
+      - test
+      - lint
+

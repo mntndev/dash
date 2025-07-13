@@ -37,7 +37,7 @@ func TestCreateClockWidget(t *testing.T) {
 			validate: func(t *testing.T, widget Widget) {
 				assert.Equal(t, "custom_clock", widget.GetID())
 				assert.Equal(t, "clock", widget.GetType())
-				
+
 				// Check that config is stored
 				clockWidget := widget.(*ClockWidget)
 				assert.Equal(t, "2006-01-02 15:04:05", clockWidget.Format)
@@ -68,9 +68,9 @@ func TestCreateClockWidget(t *testing.T) {
 			},
 		},
 		{
-			name: "create with empty config map",
-			id:   "empty_config_clock",
-			config: map[string]interface{}{},
+			name:        "create with empty config map",
+			id:          "empty_config_clock",
+			config:      map[string]interface{}{},
 			expectError: false,
 			validate: func(t *testing.T, widget Widget) {
 				clockWidget := widget.(*ClockWidget)
@@ -108,14 +108,14 @@ func TestClockWidgetInit(t *testing.T) {
 			format: "",
 			validate: func(t *testing.T, widget *ClockWidget) {
 				assert.Equal(t, "15:04:05", widget.Format)
-				
+
 				// Data should be set after init
 				assert.NotNil(t, widget.Data)
-				
+
 				// Check data structure
 				data, ok := widget.Data.(*ClockData)
 				require.True(t, ok, "Data should be *ClockData")
-				
+
 				assert.Equal(t, "15:04:05", data.Format)
 				assert.NotEmpty(t, data.Display)
 				assert.False(t, data.Time.IsZero())
@@ -126,11 +126,11 @@ func TestClockWidgetInit(t *testing.T) {
 			format: "2006-01-02 15:04:05",
 			validate: func(t *testing.T, widget *ClockWidget) {
 				assert.Equal(t, "2006-01-02 15:04:05", widget.Format)
-				
+
 				data, ok := widget.Data.(*ClockData)
 				require.True(t, ok)
 				assert.Equal(t, "2006-01-02 15:04:05", data.Format)
-				
+
 				// Display should match the format pattern
 				assert.Regexp(t, `^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$`, data.Display)
 			},
@@ -140,11 +140,11 @@ func TestClockWidgetInit(t *testing.T) {
 			format: "15:04",
 			validate: func(t *testing.T, widget *ClockWidget) {
 				assert.Equal(t, "15:04", widget.Format)
-				
+
 				data, ok := widget.Data.(*ClockData)
 				require.True(t, ok)
 				assert.Equal(t, "15:04", data.Format)
-				
+
 				// Display should match the format pattern
 				assert.Regexp(t, `^\d{2}:\d{2}$`, data.Display)
 			},
@@ -162,7 +162,7 @@ func TestClockWidgetInit(t *testing.T) {
 			require.NoError(t, err)
 
 			clockWidget := widget.(*ClockWidget)
-			
+
 			// Test initialization
 			ctx := context.Background()
 			err = clockWidget.Init(ctx)
@@ -186,7 +186,7 @@ func TestClockWidgetDataUpdates(t *testing.T) {
 	require.NoError(t, err)
 
 	clockWidget := widget.(*ClockWidget)
-	
+
 	ctx := context.Background()
 	err = clockWidget.Init(ctx)
 	require.NoError(t, err)
@@ -195,12 +195,12 @@ func TestClockWidgetDataUpdates(t *testing.T) {
 	data1, ok := clockWidget.Data.(*ClockData)
 	require.True(t, ok)
 	time1 := data1.Display
-	
+
 	// Wait a bit - since the clock updater runs in background,
 	// let's just verify the current data is valid
 	assert.NotEmpty(t, time1)
 	assert.Regexp(t, `^\d{2}:\d{2}:\d{2}$`, time1)
-	
+
 	// Verify the data structure is correct
 	assert.Equal(t, "15:04:05", data1.Format)
 	assert.False(t, data1.Time.IsZero())
@@ -222,7 +222,7 @@ func TestClockWidgetConfigValidation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			widget, err := CreateClockWidget("test_clock", tt.config, nil)
-			
+
 			if tt.expectError {
 				assert.Error(t, err)
 				assert.Nil(t, widget)
@@ -280,16 +280,16 @@ func TestClockWidgetDataStructure(t *testing.T) {
 	assert.Equal(t, "15:04:05", data.Format)
 	assert.False(t, data.Time.IsZero(), "Time should be set")
 	assert.NotEmpty(t, data.Display, "Display should not be empty")
-	
+
 	// Display should match the format pattern
 	assert.Regexp(t, `^\d{2}:\d{2}:\d{2}$`, data.Display)
-	
+
 	// Verify the display is actually formatted from the time
 	expectedDisplay := data.Time.Format(data.Format)
 	assert.Equal(t, expectedDisplay, data.Display)
 }
 
-// Benchmark tests
+// Benchmark tests.
 func BenchmarkClockWidgetCreation(b *testing.B) {
 	config := map[string]interface{}{
 		"format":   "15:04:05",
@@ -327,4 +327,3 @@ func BenchmarkClockWidgetInit(b *testing.B) {
 		}
 	}
 }
-

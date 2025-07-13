@@ -9,7 +9,6 @@ import (
 	"github.com/mntndev/dash/pkg/integrations"
 )
 
-
 type HABaseWidget struct {
 	*BaseWidget
 	EntityID     string
@@ -298,13 +297,13 @@ func (w *HAEntityWidget) Init(ctx context.Context) error {
 	// Try to fetch initial state asynchronously with a short delay to avoid blocking
 	go func() {
 		time.Sleep(100 * time.Millisecond) // Brief delay to let HA client fully initialize
-		if err := w.HABaseWidget.fetchInitialState(); err != nil {
+		if err := w.fetchInitialState(); err != nil {
 			fmt.Printf("Failed to fetch initial state for %s: %v\n", w.EntityID, err)
 		}
 	}()
 
 	// Start subscription asynchronously to avoid blocking widget initialization
-	go w.HABaseWidget.startSubscription(ctx)
+	go w.startSubscription(ctx)
 	return nil
 }
 
@@ -322,12 +321,12 @@ func (w *HASwitchWidget) Init(ctx context.Context) error {
 	// Try to fetch initial state asynchronously with a short delay to avoid blocking
 	go func() {
 		time.Sleep(100 * time.Millisecond) // Brief delay to let HA client fully initialize
-		if err := w.HABaseWidget.fetchInitialState(); err != nil {
+		if err := w.fetchInitialState(); err != nil {
 			fmt.Printf("Failed to fetch initial state for %s: %v\n", w.EntityID, err)
 		}
 	}()
 	// Start subscription asynchronously to avoid blocking widget initialization
-	go w.HABaseWidget.startSubscription(ctx)
+	go w.startSubscription(ctx)
 	return nil
 }
 
@@ -345,13 +344,13 @@ func (w *HALightWidget) Init(ctx context.Context) error {
 	// Try to fetch initial state asynchronously with a short delay to avoid blocking
 	go func() {
 		time.Sleep(100 * time.Millisecond) // Brief delay to let HA client fully initialize
-		if err := w.HABaseWidget.fetchInitialState(); err != nil {
+		if err := w.fetchInitialState(); err != nil {
 			fmt.Printf("Failed to fetch initial state for %s: %v\n", w.EntityID, err)
 		}
 	}()
 
 	// Start subscription asynchronously to avoid blocking widget initialization
-	go w.HABaseWidget.startSubscription(ctx)
+	go w.startSubscription(ctx)
 	return nil
 }
 
@@ -361,7 +360,7 @@ func (w *HAButtonWidget) Init(ctx context.Context) error {
 }
 
 func (w *HASwitchWidget) Trigger() error {
-	haClient := w.HABaseWidget.haProvider.GetHAClient()
+	haClient := w.haProvider.GetHAClient()
 	if haClient == nil || !haClient.IsConnected() {
 		return fmt.Errorf("Home Assistant client not connected")
 	}
@@ -374,7 +373,7 @@ func (w *HASwitchWidget) Trigger() error {
 }
 
 func (w *HALightWidget) Trigger() error {
-	haClient := w.HABaseWidget.haProvider.GetHAClient()
+	haClient := w.haProvider.GetHAClient()
 	if haClient == nil || !haClient.IsConnected() {
 		return fmt.Errorf("Home Assistant client not connected")
 	}
@@ -387,7 +386,7 @@ func (w *HALightWidget) Trigger() error {
 }
 
 func (w *HALightWidget) SetBrightness(brightness int) error {
-	haClient := w.HABaseWidget.haProvider.GetHAClient()
+	haClient := w.haProvider.GetHAClient()
 	if haClient == nil || !haClient.IsConnected() {
 		return fmt.Errorf("Home Assistant client not connected")
 	}
@@ -401,7 +400,7 @@ func (w *HALightWidget) SetBrightness(brightness int) error {
 }
 
 func (w *HAButtonWidget) Trigger() error {
-	haClient := w.HABaseWidget.haProvider.GetHAClient()
+	haClient := w.haProvider.GetHAClient()
 	if haClient == nil || !haClient.IsConnected() {
 		return fmt.Errorf("Home Assistant client not connected")
 	}
@@ -414,17 +413,17 @@ func (w *HAButtonWidget) Trigger() error {
 }
 
 func (w *HAEntityWidget) Close() error {
-	w.HABaseWidget.stopSubscription()
+	w.stopSubscription()
 	return nil
 }
 
 func (w *HASwitchWidget) Close() error {
-	w.HABaseWidget.stopSubscription()
+	w.stopSubscription()
 	return nil
 }
 
 func (w *HALightWidget) Close() error {
-	w.HABaseWidget.stopSubscription()
+	w.stopSubscription()
 	return nil
 }
 

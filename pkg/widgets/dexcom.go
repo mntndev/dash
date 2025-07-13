@@ -69,22 +69,22 @@ func (w *DexcomWidget) getHighThreshold() int {
 
 func (w *DexcomWidget) Init(ctx context.Context) error {
 	w.LastUpdate = time.Now()
-	
+
 	// Always start the connection check asynchronously to avoid any blocking
 	// during widget initialization
 	go w.waitForConnectionAndUpdate(ctx)
-	
+
 	return nil
 }
 
 func (w *DexcomWidget) waitForConnectionAndUpdate(ctx context.Context) {
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
-	
+
 	// Timeout after 30 seconds
 	timeout := time.NewTimer(30 * time.Second)
 	defer timeout.Stop()
-	
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -100,7 +100,7 @@ func (w *DexcomWidget) waitForConnectionAndUpdate(ctx context.Context) {
 						fmt.Printf("Recovered from panic in Dexcom provider call: %v\n", r)
 					}
 				}()
-				
+
 				dexcomClient := w.dexcomProvider.GetDexcomClient()
 				if dexcomClient != nil && dexcomClient.IsConnected() {
 					if err := w.updateData(); err != nil {
@@ -173,7 +173,7 @@ func (w *DexcomWidget) updateData() error {
 		LowThreshold:  w.getLowThreshold(),
 		HighThreshold: w.getHighThreshold(),
 	}
-	
+
 	w.setDataAndEmit(data)
 	w.LastUpdate = lastUpdate
 	return nil

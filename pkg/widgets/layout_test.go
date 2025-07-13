@@ -164,7 +164,7 @@ func TestCreateGrowWidget(t *testing.T) {
 				assert.Equal(t, "test_grow", widget.GetID())
 				assert.Equal(t, "grow", widget.GetType())
 				assert.Len(t, widget.GetChildren(), 1)
-				
+
 				growWidget := widget.(*GrowWidget)
 				assert.Equal(t, "1", growWidget.GrowValue) // Default grow value
 			},
@@ -249,22 +249,22 @@ func TestHorizontalSplitWidgetInit(t *testing.T) {
 	require.NoError(t, err)
 
 	hsplit := widget.(*SplitWidget)
-	
+
 	ctx := context.Background()
 	err = hsplit.Init(ctx)
 	require.NoError(t, err)
 
 	// Data should be set after init
 	assert.NotNil(t, hsplit.Data)
-	
+
 	// Check data structure
 	data, ok := hsplit.Data.(*LayoutData)
 	require.True(t, ok, "Data should be *LayoutData")
-	
+
 	assert.Equal(t, "horizontal_split", data.Type)
 	assert.Equal(t, "horizontal", data.Direction)
 	assert.NotNil(t, data.Sizes)
-	
+
 	// LastUpdate should be set
 	assert.False(t, hsplit.LastUpdate.IsZero())
 }
@@ -275,21 +275,21 @@ func TestVerticalSplitWidgetInit(t *testing.T) {
 	require.NoError(t, err)
 
 	vsplit := widget.(*SplitWidget)
-	
+
 	ctx := context.Background()
 	err = vsplit.Init(ctx)
 	require.NoError(t, err)
 
 	// Data should be set after init
 	assert.NotNil(t, vsplit.Data)
-	
+
 	// Check data structure
 	data, ok := vsplit.Data.(*LayoutData)
 	require.True(t, ok, "Data should be *LayoutData")
-	
+
 	assert.Equal(t, "vertical_split", data.Type)
 	assert.Equal(t, "vertical", data.Direction)
-	
+
 	// LastUpdate should be set
 	assert.False(t, vsplit.LastUpdate.IsZero())
 }
@@ -302,36 +302,38 @@ func TestGrowWidgetInit(t *testing.T) {
 	require.NoError(t, err)
 
 	growWidget := widget.(*GrowWidget)
-	
+
 	ctx := context.Background()
 	err = growWidget.Init(ctx)
 	require.NoError(t, err)
 
 	// Data should be set after init
 	assert.NotNil(t, growWidget.Data)
-	
+
 	// Check data structure
 	data, ok := growWidget.Data.(map[string]interface{})
 	require.True(t, ok, "Data should be a map")
-	
+
 	assert.Equal(t, "grow", data["type"])
 	assert.Equal(t, "2", data["grow_value"])
-	
+
 	// LastUpdate should be set
 	assert.False(t, growWidget.LastUpdate.IsZero())
 }
 
-
 func TestLayoutWidgetBasics(t *testing.T) {
 	children := createTestChildren(2)
-	
+
 	t.Run("widget properties", func(t *testing.T) {
-		widgets := []struct{ w Widget; expectedType string }{
+		widgets := []struct {
+			w            Widget
+			expectedType string
+		}{
 			{mustCreate(CreateHorizontalSplitWidget("h", nil, children)), "horizontal_split"},
 			{mustCreate(CreateVerticalSplitWidget("v", nil, children)), "vertical_split"},
 			{mustCreate(CreateGrowWidget("g", nil, children)), "grow"},
 		}
-		
+
 		for _, test := range widgets {
 			assert.Equal(t, test.expectedType, test.w.GetType())
 			assert.Len(t, test.w.GetChildren(), 2)
@@ -350,10 +352,10 @@ func mustCreate(w Widget, err error) Widget {
 func TestLayoutWidgetNesting(t *testing.T) {
 	// Create a nested layout structure
 	innerChildren := createTestChildren(2)
-	
+
 	hsplit, err := CreateHorizontalSplitWidget("inner_hsplit", nil, innerChildren)
 	require.NoError(t, err)
-	
+
 	vsplit, err := CreateVerticalSplitWidget("inner_vsplit", nil, innerChildren)
 	require.NoError(t, err)
 
@@ -364,13 +366,13 @@ func TestLayoutWidgetNesting(t *testing.T) {
 	// Test the nested structure
 	assert.Equal(t, "outer_vsplit", outerWidget.GetID())
 	assert.Len(t, outerWidget.GetChildren(), 2)
-	
+
 	// First child should be horizontal split
 	firstChild := outerWidget.GetChildren()[0]
 	assert.Equal(t, "inner_hsplit", firstChild.GetID())
 	assert.Equal(t, "horizontal_split", firstChild.GetType())
 	assert.Len(t, firstChild.GetChildren(), 2)
-	
+
 	// Second child should be vertical split
 	secondChild := outerWidget.GetChildren()[1]
 	assert.Equal(t, "inner_vsplit", secondChild.GetID())
@@ -380,9 +382,9 @@ func TestLayoutWidgetNesting(t *testing.T) {
 
 func TestGrowWidgetGetGrowValue(t *testing.T) {
 	tests := []struct {
-		name      string
-		config    map[string]interface{}
-		expected  string
+		name     string
+		config   map[string]interface{}
+		expected string
 	}{
 		{
 			name:     "default grow value",
@@ -417,7 +419,7 @@ func TestGrowWidgetGetGrowValue(t *testing.T) {
 	}
 }
 
-// Helper function to create test child widgets
+// Helper function to create test child widgets.
 func createTestChildren(count int) []Widget {
 	children := make([]Widget, count)
 	for i := 0; i < count; i++ {
@@ -429,8 +431,7 @@ func createTestChildren(count int) []Widget {
 	return children
 }
 
-
-// Benchmark tests
+// Benchmark tests.
 func BenchmarkHorizontalSplitWidgetCreation(b *testing.B) {
 	children := createTestChildren(2)
 	config := map[string]interface{}{

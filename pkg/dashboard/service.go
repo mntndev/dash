@@ -41,7 +41,7 @@ func (w *WailsEventEmitter) Emit(event string, data interface{}) {
 	}
 }
 
-// WidgetData represents the dynamic data of a widget
+// WidgetData represents the dynamic data of a widget.
 type WidgetData struct {
 	ID         string      `json:"id"`
 	Type       string      `json:"type"`
@@ -49,7 +49,7 @@ type WidgetData struct {
 	LastUpdate time.Time   `json:"last_update"`
 }
 
-// DashboardInfo contains the static dashboard information
+// DashboardInfo contains the static dashboard information.
 type DashboardInfo struct {
 	Title      string                 `json:"title"`
 	Theme      string                 `json:"theme"`
@@ -135,7 +135,7 @@ func (ds *DashboardService) Initialize() error {
 	if err := ds.createWidgets(); err != nil {
 		return fmt.Errorf("failed to create widgets: %w", err)
 	}
-	
+
 	if ds.rootWidget == nil {
 		return fmt.Errorf("root widget not found")
 	}
@@ -238,8 +238,6 @@ func (ds *DashboardService) getDashboardInfo() DashboardInfo {
 	}
 }
 
-
-
 func (ds *DashboardService) GetHAClient() *integrations.HomeAssistantClient {
 	ds.mu.RLock()
 	defer ds.mu.RUnlock()
@@ -256,14 +254,11 @@ func (ds *DashboardService) Emit(event string, data interface{}) {
 	ds.eventEmitter.Emit(event, data)
 }
 
-
-
 func (ds *DashboardService) GetConfig() *config.Config {
 	ds.mu.RLock()
 	defer ds.mu.RUnlock()
 	return ds.config
 }
-
 
 func (ds *DashboardService) Close() error {
 	ds.cancel()
@@ -281,10 +276,10 @@ func (ds *DashboardService) Close() error {
 
 // Wails Service Lifecycle Methods
 
-// ServiceStartup is called when the service is being started
+// ServiceStartup is called when the service is being started.
 func (ds *DashboardService) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
 	log.Println("Dashboard service starting up...")
-	
+
 	// Initialize the dashboard service in a goroutine to avoid blocking startup
 	go func() {
 		if err := ds.Initialize(); err != nil {
@@ -293,11 +288,11 @@ func (ds *DashboardService) ServiceStartup(ctx context.Context, options applicat
 			log.Println("Dashboard service initialized successfully")
 		}
 	}()
-	
+
 	return nil
 }
 
-// ServiceShutdown is called when the service is being shut down
+// ServiceShutdown is called when the service is being shut down.
 func (ds *DashboardService) ServiceShutdown(ctx context.Context) error {
 	log.Println("Dashboard service shutting down...")
 	return ds.Close()
@@ -305,7 +300,7 @@ func (ds *DashboardService) ServiceShutdown(ctx context.Context) error {
 
 // Wails Exported Methods
 
-// GetDashboardInfo returns the current dashboard structure and status for Wails
+// GetDashboardInfo returns the current dashboard structure and status for Wails.
 func (ds *DashboardService) GetDashboardInfo(ctx context.Context) (*DashboardInfo, error) {
 	ds.mu.RLock()
 	defer ds.mu.RUnlock()
@@ -313,17 +308,17 @@ func (ds *DashboardService) GetDashboardInfo(ctx context.Context) (*DashboardInf
 	return &info, nil
 }
 
-// GetWidgetData returns the current data for a specific widget for Wails
+// GetWidgetData returns the current data for a specific widget for Wails.
 func (ds *DashboardService) GetWidgetData(ctx context.Context, widgetID string) (*WidgetData, error) {
 	// This method doesn't exist yet, I need to add it
 	ds.mu.RLock()
 	defer ds.mu.RUnlock()
-	
+
 	widget, exists := ds.widgetManager.GetWidget(widgetID)
 	if !exists {
 		return nil, fmt.Errorf("widget %s not found", widgetID)
 	}
-	
+
 	return &WidgetData{
 		ID:         widget.GetID(),
 		Type:       widget.GetType(),
@@ -332,7 +327,7 @@ func (ds *DashboardService) GetWidgetData(ctx context.Context, widgetID string) 
 	}, nil
 }
 
-// TriggerWidget activates a triggerable widget for Wails
+// TriggerWidget activates a triggerable widget for Wails.
 func (ds *DashboardService) TriggerWidget(ctx context.Context, widgetID string) error {
 	ds.mu.RLock()
 	defer ds.mu.RUnlock()
@@ -349,7 +344,7 @@ func (ds *DashboardService) TriggerWidget(ctx context.Context, widgetID string) 
 	return fmt.Errorf("widget %s does not support triggering", widgetID)
 }
 
-// SetLightBrightness controls the brightness of a light widget for Wails
+// SetLightBrightness controls the brightness of a light widget for Wails.
 func (ds *DashboardService) SetLightBrightness(ctx context.Context, widgetID string, brightness int) error {
 	ds.mu.RLock()
 	defer ds.mu.RUnlock()
@@ -366,7 +361,7 @@ func (ds *DashboardService) SetLightBrightness(ctx context.Context, widgetID str
 	return fmt.Errorf("widget %s does not support brightness control", widgetID)
 }
 
-// ReloadConfig reloads the dashboard configuration for Wails
+// ReloadConfig reloads the dashboard configuration for Wails.
 func (ds *DashboardService) ReloadConfig(ctx context.Context) error {
 	ds.mu.Lock()
 	defer ds.mu.Unlock()
@@ -395,7 +390,7 @@ func (ds *DashboardService) ReloadConfig(ctx context.Context) error {
 	return ds.Initialize()
 }
 
-// IsFullscreenEnabled returns whether fullscreen mode is enabled
+// IsFullscreenEnabled returns whether fullscreen mode is enabled.
 func (ds *DashboardService) IsFullscreenEnabled(ctx context.Context) bool {
 	ds.mu.RLock()
 	defer ds.mu.RUnlock()

@@ -5,7 +5,7 @@ import (
 	"reflect"
 )
 
-// Widget-specific configuration structs
+// Widget-specific configuration structs.
 type ClockConfig struct {
 	Format string `json:"format" default:"15:04:05"`
 }
@@ -33,43 +33,43 @@ type GrowConfig struct {
 	// No specific configuration
 }
 
-// ConfigParser provides utilities for parsing widget configurations
+// ConfigParser provides utilities for parsing widget configurations.
 type ConfigParser struct{}
 
 func NewConfigParser() *ConfigParser {
 	return &ConfigParser{}
 }
 
-// ParseConfig converts a generic map to a typed configuration struct
+// ParseConfig converts a generic map to a typed configuration struct.
 func (cp *ConfigParser) ParseConfig(config map[string]interface{}, target interface{}) error {
 	targetValue := reflect.ValueOf(target)
 	if targetValue.Kind() != reflect.Ptr {
 		return fmt.Errorf("target must be a pointer")
 	}
-	
+
 	targetValue = targetValue.Elem()
 	targetType := targetValue.Type()
-	
+
 	for i := 0; i < targetValue.NumField(); i++ {
 		field := targetValue.Field(i)
 		fieldType := targetType.Field(i)
-		
+
 		jsonTag := fieldType.Tag.Get("json")
 		defaultTag := fieldType.Tag.Get("default")
 		validateTag := fieldType.Tag.Get("validate")
-		
+
 		if jsonTag == "" {
 			continue
 		}
-		
+
 		// Get value from config map
 		value, exists := config[jsonTag]
-		
+
 		// Handle required validation
 		if validateTag == "required" && (!exists || value == nil) {
 			return fmt.Errorf("required field '%s' is missing", jsonTag)
 		}
-		
+
 		// Use default value if not provided
 		if !exists || value == nil {
 			if defaultTag != "" {
@@ -78,13 +78,13 @@ func (cp *ConfigParser) ParseConfig(config map[string]interface{}, target interf
 				continue
 			}
 		}
-		
+
 		// Set the field value
 		if err := cp.setFieldValue(field, value); err != nil {
 			return fmt.Errorf("error setting field '%s': %w", jsonTag, err)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -92,7 +92,7 @@ func (cp *ConfigParser) setFieldValue(field reflect.Value, value interface{}) er
 	if !field.CanSet() {
 		return fmt.Errorf("field cannot be set")
 	}
-	
+
 	switch field.Kind() {
 	case reflect.String:
 		if str, ok := value.(string); ok {
@@ -119,6 +119,6 @@ func (cp *ConfigParser) setFieldValue(field reflect.Value, value interface{}) er
 	default:
 		return fmt.Errorf("unsupported field type: %s", field.Kind())
 	}
-	
+
 	return nil
 }

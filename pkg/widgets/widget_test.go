@@ -4,12 +4,12 @@ import (
 	"context"
 	"testing"
 
+	"github.com/mntndev/dash/pkg/integrations"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/mntndev/dash/pkg/integrations"
 )
 
-// MockProvider implements Provider interface for testing
+// MockProvider implements Provider interface for testing.
 type MockProvider struct {
 	haClient     *integrations.HomeAssistantClient
 	dexcomClient *integrations.DexcomClient
@@ -84,7 +84,7 @@ func TestWidgetRegistry(t *testing.T) {
 
 		expectedTypes := []string{
 			"home_assistant.entity",
-			"home_assistant.button", 
+			"home_assistant.button",
 			"home_assistant.switch",
 			"home_assistant.light",
 			"dexcom",
@@ -119,7 +119,7 @@ func TestDefaultWidgetFactory(t *testing.T) {
 		// Create child widgets first
 		child1, err := factory.Create("clock", "child1", nil, nil)
 		require.NoError(t, err)
-		
+
 		child2, err := factory.Create("clock", "child2", nil, nil)
 		require.NoError(t, err)
 
@@ -192,7 +192,7 @@ func TestWidgetManager(t *testing.T) {
 		// Add a few widgets
 		err := manager.CreateWidget("widget1", "clock", nil, nil)
 		require.NoError(t, err)
-		
+
 		err = manager.CreateWidget("widget2", "grow", nil, nil)
 		require.NoError(t, err)
 
@@ -251,10 +251,10 @@ func TestBaseWidget(t *testing.T) {
 
 	t.Run("init and close work", func(t *testing.T) {
 		ctx := context.Background()
-		
+
 		err := widget.Init(ctx)
 		assert.NoError(t, err) // BaseWidget Init should not error
-		
+
 		err = widget.Close()
 		assert.NoError(t, err) // BaseWidget Close should not error
 	})
@@ -262,9 +262,9 @@ func TestBaseWidget(t *testing.T) {
 	t.Run("children management", func(t *testing.T) {
 		child1 := &BaseWidget{ID: "child1", Type: "test"}
 		child2 := &BaseWidget{ID: "child2", Type: "test"}
-		
+
 		widget.Children = []Widget{child1, child2}
-		
+
 		children := widget.GetChildren()
 		assert.Len(t, children, 2)
 		assert.Equal(t, "child1", children[0].GetID())
@@ -275,13 +275,13 @@ func TestBaseWidget(t *testing.T) {
 func TestWidgetInterfaces(t *testing.T) {
 	var widget Widget = &BaseWidget{}
 	assert.Implements(t, (*Widget)(nil), &BaseWidget{})
-	
+
 	// Test basic interface detection
 	_, isContainer := widget.(Container)
 	assert.False(t, isContainer)
 }
 
-// Test that all built-in widget types can be created successfully
+// Test that all built-in widget types can be created successfully.
 func TestBuiltinWidgetCreation(t *testing.T) {
 	provider := &MockProvider{}
 	factory := NewDefaultWidgetFactory(provider)
@@ -358,7 +358,7 @@ func TestBuiltinWidgetCreation(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			widget, err := factory.Create(tc.widgetType, "test_"+tc.widgetType, tc.config, nil)
-			
+
 			if tc.shouldWork {
 				assert.NoError(t, err, "Should be able to create %s widget", tc.widgetType)
 				assert.NotNil(t, widget)
@@ -372,7 +372,7 @@ func TestBuiltinWidgetCreation(t *testing.T) {
 	}
 }
 
-// Benchmark tests for performance
+// Benchmark tests for performance.
 func BenchmarkWidgetCreation(b *testing.B) {
 	provider := &MockProvider{}
 	factory := NewDefaultWidgetFactory(provider)
@@ -390,4 +390,3 @@ func BenchmarkWidgetCreation(b *testing.B) {
 		}
 	}
 }
-
