@@ -167,13 +167,13 @@ func (ds *DashboardService) createWidgets() error {
 	return nil
 }
 
-func (ds *DashboardService) createWidgetWithChildren(config config.WidgetConfig, idPrefix string) (widgets.Widget, error) {
-	widgetID := fmt.Sprintf("%s_%s", idPrefix, config.Type)
-	log.Printf("Creating widget: %s (type: %s)", widgetID, config.Type)
+func (ds *DashboardService) createWidgetWithChildren(widgetConfig config.WidgetConfig, idPrefix string) (widgets.Widget, error) {
+	widgetID := fmt.Sprintf("%s_%s", idPrefix, widgetConfig.Type)
+	log.Printf("Creating widget: %s (type: %s)", widgetID, widgetConfig.Type)
 
 	// First, create all child widgets depth-first
 	var childWidgets []widgets.Widget
-	for i, childConfig := range config.Children {
+	for i, childConfig := range widgetConfig.Children {
 		childID := fmt.Sprintf("%s_child_%d", idPrefix, i)
 		childWidget, err := ds.createWidgetWithChildren(childConfig, childID)
 		if err != nil {
@@ -183,13 +183,13 @@ func (ds *DashboardService) createWidgetWithChildren(config config.WidgetConfig,
 	}
 
 	// Create the parent widget with ID and children at creation time
-	widget, err := ds.widgetManager.GetFactory().Create(config.Type, widgetID, config.Config, childWidgets)
+	widget, err := ds.widgetManager.GetFactory().Create(widgetConfig.Type, widgetID, widgetConfig.Config, childWidgets)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create widget %s: %w", widgetID, err)
 	}
 
 	// Initialize the widget immediately since it now has everything it needs
-	log.Printf("Initializing widget: %s (type: %s)", widgetID, config.Type)
+	log.Printf("Initializing widget: %s (type: %s)", widgetID, widgetConfig.Type)
 	if err := widget.Init(ds.ctx); err != nil {
 		return nil, fmt.Errorf("failed to initialize widget %s: %w", widgetID, err)
 	}

@@ -94,7 +94,7 @@ func (wr *WidgetRegistry) Register(widgetType string, creator WidgetCreator) {
 	wr.creators[widgetType] = creator
 }
 
-func (wr *WidgetRegistry) Create(widgetType string, id string, config map[string]interface{}, children []Widget, provider Provider) (Widget, error) {
+func (wr *WidgetRegistry) Create(widgetType, id string, config map[string]interface{}, children []Widget, provider Provider) (Widget, error) {
 	creator, exists := wr.creators[widgetType]
 	if !exists {
 		return nil, fmt.Errorf("unsupported widget type: %s", widgetType)
@@ -158,7 +158,7 @@ func registerBuiltinWidgets(registry *WidgetRegistry) {
 	})
 }
 
-func (f *DefaultWidgetFactory) Create(widgetType string, id string, config map[string]interface{}, children []Widget) (Widget, error) {
+func (f *DefaultWidgetFactory) Create(widgetType, id string, config map[string]interface{}, children []Widget) (Widget, error) {
 	return f.registry.Create(widgetType, id, config, children, f.provider)
 }
 
@@ -178,7 +178,7 @@ func NewWidgetManager(factory WidgetFactory) *WidgetManager {
 	}
 }
 
-func (wm *WidgetManager) CreateWidget(id string, widgetType string, config map[string]interface{}, children []Widget) error {
+func (wm *WidgetManager) CreateWidget(id, widgetType string, config map[string]interface{}, children []Widget) error {
 	widget, err := wm.factory.Create(widgetType, id, config, children)
 	if err != nil {
 		return fmt.Errorf("failed to create widget %s: %w", id, err)
@@ -222,11 +222,12 @@ type GrowWidget struct {
 func CreateGrowWidget(id string, config map[string]interface{}, children []Widget) (Widget, error) {
 	// Parse grow value from config, default to "1"
 	growValue := "1"
-	if val, ok := config["grow"].(string); ok {
+	switch val := config["grow"].(type) {
+	case string:
 		growValue = val
-	} else if val, ok := config["grow"].(float64); ok {
+	case float64:
 		growValue = fmt.Sprintf("%.0f", val)
-	} else if val, ok := config["grow"].(int); ok {
+	case int:
 		growValue = fmt.Sprintf("%d", val)
 	}
 

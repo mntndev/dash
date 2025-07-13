@@ -198,15 +198,15 @@ func parseDexcomTimestamp(dateStr string) time.Time {
 	var timestampStr string
 
 	// Dexcom timestamps can come in different formats: "/Date(milliseconds)/" or "Date(milliseconds)"
-	if strings.HasPrefix(dateStr, "/Date(") && strings.HasSuffix(dateStr, ")/") {
+	switch {
+	case strings.HasPrefix(dateStr, "/Date(") && strings.HasSuffix(dateStr, ")/"):
 		// Format: /Date(milliseconds)/
 		timestampStr = strings.TrimPrefix(dateStr, "/Date(")
 		timestampStr = strings.TrimSuffix(timestampStr, ")/")
-	} else if strings.HasPrefix(dateStr, "Date(") && strings.HasSuffix(dateStr, ")") {
-		// Format: Date(milliseconds)
+	case strings.HasPrefix(dateStr, "Date(") && strings.HasSuffix(dateStr, ")"):
 		timestampStr = strings.TrimPrefix(dateStr, "Date(")
 		timestampStr = strings.TrimSuffix(timestampStr, ")")
-	} else {
+	default:
 		return time.Time{}
 	}
 

@@ -187,16 +187,16 @@ func TestWidgetManager(t *testing.T) {
 
 	t.Run("get all widgets", func(t *testing.T) {
 		// Clear any existing widgets by creating a new manager
-		manager := NewWidgetManager(factory)
+		testManager := NewWidgetManager(factory)
 
 		// Add a few widgets
-		err := manager.CreateWidget("widget1", "clock", nil, nil)
+		err := testManager.CreateWidget("widget1", "clock", nil, nil)
 		require.NoError(t, err)
 
-		err = manager.CreateWidget("widget2", "grow", nil, nil)
+		err = testManager.CreateWidget("widget2", "grow", nil, nil)
 		require.NoError(t, err)
 
-		allWidgets := manager.GetAllWidgets()
+		allWidgets := testManager.GetAllWidgets()
 		assert.Len(t, allWidgets, 2)
 		assert.Contains(t, allWidgets, "widget1")
 		assert.Contains(t, allWidgets, "widget2")

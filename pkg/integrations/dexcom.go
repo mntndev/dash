@@ -29,10 +29,10 @@ type DexcomClient struct {
 	maxHistory     int
 }
 
-func NewDexcomClient(config *config.DexcomConfig) *DexcomClient {
+func NewDexcomClient(cfg *config.DexcomConfig) *DexcomClient {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &DexcomClient{
-		config:         config,
+		config:         cfg,
 		ctx:            ctx,
 		cancel:         cancel,
 		updateInterval: 1 * time.Minute,

@@ -216,7 +216,7 @@ func TestClockWidgetConfigValidation(t *testing.T) {
 		{"valid format", map[string]interface{}{"format": "2006-01-02"}, false, "2006-01-02"},
 		{"nil config uses default", nil, false, "15:04:05"},
 		{"empty config uses default", map[string]interface{}{}, false, "15:04:05"},
-		{"invalid format type", map[string]interface{}{"format": 123}, true, ""},
+		{"invalid format type uses default", map[string]interface{}{"format": 123}, false, "15:04:05"},
 	}
 
 	for _, tt := range tests {

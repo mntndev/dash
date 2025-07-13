@@ -179,10 +179,9 @@ func (hab *HABaseWidget) stopSubscription() {
 }
 
 func CreateHAEntityWidget(id string, config map[string]interface{}, children []Widget, provider Provider) (Widget, error) {
-	var haConfig HAEntityConfig
-	parser := NewConfigParser()
-	if err := parser.ParseConfig(config, &haConfig); err != nil {
-		return nil, fmt.Errorf("invalid HA entity configuration: %w", err)
+	entityID, ok := config["entity_id"].(string)
+	if !ok || entityID == "" {
+		return nil, fmt.Errorf("entity_id is required")
 	}
 
 	widget := &HAEntityWidget{
@@ -193,7 +192,7 @@ func CreateHAEntityWidget(id string, config map[string]interface{}, children []W
 				Config:   config,
 				Children: children,
 			},
-			EntityID:   haConfig.EntityID,
+			EntityID:   entityID,
 			haProvider: provider,
 			provider:   provider,
 		},
@@ -203,10 +202,9 @@ func CreateHAEntityWidget(id string, config map[string]interface{}, children []W
 }
 
 func CreateHASwitchWidget(id string, config map[string]interface{}, children []Widget, provider Provider) (Widget, error) {
-	var haConfig HAEntityConfig
-	parser := NewConfigParser()
-	if err := parser.ParseConfig(config, &haConfig); err != nil {
-		return nil, fmt.Errorf("invalid HA switch configuration: %w", err)
+	entityID, ok := config["entity_id"].(string)
+	if !ok || entityID == "" {
+		return nil, fmt.Errorf("entity_id is required")
 	}
 
 	widget := &HASwitchWidget{
@@ -217,7 +215,7 @@ func CreateHASwitchWidget(id string, config map[string]interface{}, children []W
 				Config:   config,
 				Children: children,
 			},
-			EntityID:   haConfig.EntityID,
+			EntityID:   entityID,
 			haProvider: provider,
 			provider:   provider,
 		},
@@ -227,10 +225,9 @@ func CreateHASwitchWidget(id string, config map[string]interface{}, children []W
 }
 
 func CreateHALightWidget(id string, config map[string]interface{}, children []Widget, provider Provider) (Widget, error) {
-	var haConfig HAEntityConfig
-	parser := NewConfigParser()
-	if err := parser.ParseConfig(config, &haConfig); err != nil {
-		return nil, fmt.Errorf("invalid HA light configuration: %w", err)
+	entityID, ok := config["entity_id"].(string)
+	if !ok || entityID == "" {
+		return nil, fmt.Errorf("entity_id is required")
 	}
 
 	widget := &HALightWidget{
@@ -241,7 +238,7 @@ func CreateHALightWidget(id string, config map[string]interface{}, children []Wi
 				Config:   config,
 				Children: children,
 			},
-			EntityID:   haConfig.EntityID,
+			EntityID:   entityID,
 			haProvider: provider,
 			provider:   provider,
 		},
@@ -251,10 +248,24 @@ func CreateHALightWidget(id string, config map[string]interface{}, children []Wi
 }
 
 func CreateHAButtonWidget(id string, config map[string]interface{}, children []Widget, provider Provider) (Widget, error) {
-	var buttonConfig HAButtonConfig
-	parser := NewConfigParser()
-	if err := parser.ParseConfig(config, &buttonConfig); err != nil {
-		return nil, fmt.Errorf("invalid HA button configuration: %w", err)
+	entityID, ok := config["entity_id"].(string)
+	if !ok || entityID == "" {
+		return nil, fmt.Errorf("entity_id is required")
+	}
+
+	service, ok := config["service"].(string)
+	if !ok || service == "" {
+		return nil, fmt.Errorf("service is required")
+	}
+
+	domain, ok := config["domain"].(string)
+	if !ok || domain == "" {
+		return nil, fmt.Errorf("domain is required")
+	}
+
+	label, _ := config["label"].(string)
+	if label == "" {
+		label = "Button"
 	}
 
 	widget := &HAButtonWidget{
@@ -265,19 +276,19 @@ func CreateHAButtonWidget(id string, config map[string]interface{}, children []W
 				Config:   config,
 				Children: children,
 			},
-			EntityID:   buttonConfig.EntityID,
+			EntityID:   entityID,
 			haProvider: provider,
 			provider:   provider,
 		},
-		Service: buttonConfig.Service,
-		Domain:  buttonConfig.Domain,
+		Service: service,
+		Domain:  domain,
 	}
 
 	widget.Data = &HAButtonData{
-		EntityID: buttonConfig.EntityID,
-		Service:  buttonConfig.Service,
-		Domain:   buttonConfig.Domain,
-		Label:    buttonConfig.Label,
+		EntityID: entityID,
+		Service:  service,
+		Domain:   domain,
+		Label:    label,
 	}
 
 	return widget, nil

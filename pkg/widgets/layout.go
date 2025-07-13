@@ -2,7 +2,6 @@ package widgets
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"time"
 )
@@ -28,10 +27,16 @@ func CreateVerticalSplitWidget(id string, config map[string]interface{}, childre
 }
 
 func createSplitWidget(id string, config map[string]interface{}, children []Widget, widgetType, direction string) (Widget, error) {
-	var splitConfig SplitConfig
-	parser := NewConfigParser()
-	if err := parser.ParseConfig(config, &splitConfig); err != nil {
-		return nil, fmt.Errorf("invalid split configuration: %w", err)
+	var sizes []float64
+	if sizesInterface, ok := config["sizes"]; ok {
+		if sizesSlice, ok := sizesInterface.([]interface{}); ok {
+			sizes = make([]float64, len(sizesSlice))
+			for i, v := range sizesSlice {
+				if f, ok := v.(float64); ok {
+					sizes[i] = f
+				}
+			}
+		}
 	}
 
 	widget := &SplitWidget{
@@ -42,7 +47,7 @@ func createSplitWidget(id string, config map[string]interface{}, children []Widg
 			Children: children,
 		},
 		Direction: direction,
-		Sizes:     splitConfig.Sizes,
+		Sizes:     sizes,
 	}
 
 	return widget, nil

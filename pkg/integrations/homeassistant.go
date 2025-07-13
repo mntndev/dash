@@ -77,10 +77,10 @@ type SubscriptionManager struct {
 	cancel        context.CancelFunc
 }
 
-func NewHomeAssistantClient(config *config.HomeAssistantConfig) *HomeAssistantClient {
+func NewHomeAssistantClient(cfg *config.HomeAssistantConfig) *HomeAssistantClient {
 	ctx, cancel := context.WithCancel(context.Background())
 	client := &HomeAssistantClient{
-		config:    config,
+		config:    cfg,
 		callbacks: make(map[int]func(HAMessage)),
 		ctx:       ctx,
 		cancel:    cancel,
