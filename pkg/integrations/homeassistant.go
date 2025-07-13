@@ -71,7 +71,6 @@ type StateChangeEvent struct {
 type SubscriptionManager struct {
 	haClient      *HomeAssistantClient
 	subscriptions map[string][]chan StateChangeEvent
-	subID         int
 	mu            sync.RWMutex
 	ctx           context.Context
 	cancel        context.CancelFunc
@@ -145,7 +144,7 @@ func (ha *HomeAssistantClient) readMessages() {
 		ha.authenticated = false
 		ha.mu.Unlock()
 		if ha.conn != nil {
-			ha.conn.Close()
+			_ = ha.conn.Close()
 		}
 	}()
 
@@ -424,13 +423,13 @@ func (sm *SubscriptionManager) processStateChangeEvent(event HAEvent) {
 	if newStateData, ok := data["new_state"]; ok && newStateData != nil {
 		newStateBytes, _ := json.Marshal(newStateData)
 		newState = &HAEntityState{}
-		json.Unmarshal(newStateBytes, newState)
+		_ = json.Unmarshal(newStateBytes, newState)
 	}
 
 	if oldStateData, ok := data["old_state"]; ok && oldStateData != nil {
 		oldStateBytes, _ := json.Marshal(oldStateData)
 		oldState = &HAEntityState{}
-		json.Unmarshal(oldStateBytes, oldState)
+		_ = json.Unmarshal(oldStateBytes, oldState)
 	}
 
 	stateEvent := StateChangeEvent{

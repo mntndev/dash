@@ -118,7 +118,7 @@ func (w *DexcomWidget) waitForConnectionAndUpdate(ctx context.Context) {
 func (w *DexcomWidget) updateData() error {
 	dexcomClient := w.dexcomProvider.GetDexcomClient()
 	if dexcomClient == nil || !dexcomClient.IsConnected() {
-		return fmt.Errorf("Dexcom client not connected")
+		return fmt.Errorf("dexcom client not connected")
 	}
 
 	latest, lastUpdate, err := dexcomClient.GetLatestGlucose()

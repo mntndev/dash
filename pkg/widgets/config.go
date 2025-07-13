@@ -5,7 +5,7 @@ import (
 	"reflect"
 )
 
-// Widget-specific configuration structs.
+// ClockConfig defines configuration for clock widgets.
 type ClockConfig struct {
 	Format string `json:"format" default:"15:04:05"`
 }

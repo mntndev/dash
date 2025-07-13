@@ -24,7 +24,7 @@ type Widget interface {
 	Close() error
 }
 
-// Capability interfaces for widgets.
+// Triggerable interface defines widgets that can be manually triggered.
 type Triggerable interface {
 	Trigger() error
 }
@@ -130,25 +130,15 @@ func NewDefaultWidgetFactory(provider Provider) *DefaultWidgetFactory {
 }
 
 func registerBuiltinWidgets(registry *WidgetRegistry) {
-	registry.Register("home_assistant.entity", func(id string, config map[string]interface{}, children []Widget, provider Provider) (Widget, error) {
-		return CreateHAEntityWidget(id, config, children, provider)
-	})
+	registry.Register("home_assistant.entity", CreateHAEntityWidget)
 
-	registry.Register("home_assistant.button", func(id string, config map[string]interface{}, children []Widget, provider Provider) (Widget, error) {
-		return CreateHAButtonWidget(id, config, children, provider)
-	})
+	registry.Register("home_assistant.button", CreateHAButtonWidget)
 
-	registry.Register("home_assistant.switch", func(id string, config map[string]interface{}, children []Widget, provider Provider) (Widget, error) {
-		return CreateHASwitchWidget(id, config, children, provider)
-	})
+	registry.Register("home_assistant.switch", CreateHASwitchWidget)
 
-	registry.Register("home_assistant.light", func(id string, config map[string]interface{}, children []Widget, provider Provider) (Widget, error) {
-		return CreateHALightWidget(id, config, children, provider)
-	})
+	registry.Register("home_assistant.light", CreateHALightWidget)
 
-	registry.Register("dexcom", func(id string, config map[string]interface{}, children []Widget, provider Provider) (Widget, error) {
-		return CreateDexcomWidget(id, config, children, provider)
-	})
+	registry.Register("dexcom", CreateDexcomWidget)
 
 	registry.Register("clock", func(id string, config map[string]interface{}, children []Widget, provider Provider) (Widget, error) {
 		return CreateClockWidget(id, config, children)
@@ -216,7 +206,7 @@ func (wm *WidgetManager) GetFactory() WidgetFactory {
 
 func (wm *WidgetManager) RemoveWidget(id string) {
 	if widget, exists := wm.widgets[id]; exists {
-		widget.Close()
+		_ = widget.Close()
 		delete(wm.widgets, id)
 	}
 }

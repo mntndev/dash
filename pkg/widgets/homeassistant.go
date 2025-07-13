@@ -99,7 +99,7 @@ func (hab *HABaseWidget) waitForConnectionAndSubscribe(ctx context.Context) {
 func (hab *HABaseWidget) setupSubscription(ctx context.Context) error {
 	haClient := hab.haProvider.GetHAClient()
 	if haClient == nil || !haClient.IsConnected() {
-		return fmt.Errorf("Home Assistant client not connected")
+		return fmt.Errorf("home Assistant client not connected")
 	}
 
 	subscription, err := haClient.Subscribe(hab.EntityID)
@@ -141,7 +141,7 @@ func (hab *HABaseWidget) processStateChanges(ctx context.Context) {
 func (hab *HABaseWidget) fetchInitialState() error {
 	haClient := hab.haProvider.GetHAClient()
 	if haClient == nil || !haClient.IsConnected() {
-		return fmt.Errorf("Home Assistant client not connected")
+		return fmt.Errorf("home Assistant client not connected")
 	}
 
 	states, err := haClient.GetStates()
@@ -303,7 +303,9 @@ func (w *HAEntityWidget) Init(ctx context.Context) error {
 	}()
 
 	// Start subscription asynchronously to avoid blocking widget initialization
-	go w.startSubscription(ctx)
+	go func() {
+		_ = w.startSubscription(ctx)
+	}()
 	return nil
 }
 
@@ -326,7 +328,9 @@ func (w *HASwitchWidget) Init(ctx context.Context) error {
 		}
 	}()
 	// Start subscription asynchronously to avoid blocking widget initialization
-	go w.startSubscription(ctx)
+	go func() {
+		_ = w.startSubscription(ctx)
+	}()
 	return nil
 }
 
@@ -350,7 +354,9 @@ func (w *HALightWidget) Init(ctx context.Context) error {
 	}()
 
 	// Start subscription asynchronously to avoid blocking widget initialization
-	go w.startSubscription(ctx)
+	go func() {
+		_ = w.startSubscription(ctx)
+	}()
 	return nil
 }
 
@@ -362,7 +368,7 @@ func (w *HAButtonWidget) Init(ctx context.Context) error {
 func (w *HASwitchWidget) Trigger() error {
 	haClient := w.haProvider.GetHAClient()
 	if haClient == nil || !haClient.IsConnected() {
-		return fmt.Errorf("Home Assistant client not connected")
+		return fmt.Errorf("home Assistant client not connected")
 	}
 
 	serviceData := map[string]interface{}{
@@ -375,7 +381,7 @@ func (w *HASwitchWidget) Trigger() error {
 func (w *HALightWidget) Trigger() error {
 	haClient := w.haProvider.GetHAClient()
 	if haClient == nil || !haClient.IsConnected() {
-		return fmt.Errorf("Home Assistant client not connected")
+		return fmt.Errorf("home Assistant client not connected")
 	}
 
 	serviceData := map[string]interface{}{
@@ -388,7 +394,7 @@ func (w *HALightWidget) Trigger() error {
 func (w *HALightWidget) SetBrightness(brightness int) error {
 	haClient := w.haProvider.GetHAClient()
 	if haClient == nil || !haClient.IsConnected() {
-		return fmt.Errorf("Home Assistant client not connected")
+		return fmt.Errorf("home Assistant client not connected")
 	}
 
 	serviceData := map[string]interface{}{
@@ -402,7 +408,7 @@ func (w *HALightWidget) SetBrightness(brightness int) error {
 func (w *HAButtonWidget) Trigger() error {
 	haClient := w.haProvider.GetHAClient()
 	if haClient == nil || !haClient.IsConnected() {
-		return fmt.Errorf("Home Assistant client not connected")
+		return fmt.Errorf("home Assistant client not connected")
 	}
 
 	serviceData := map[string]interface{}{

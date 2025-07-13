@@ -33,8 +33,7 @@ tasks:
       - task: install:frontend:deps
       - task: generate:bindings
         vars:
-          BUILD_FLAGS:
-            ref: .BUILD_FLAGS
+          BUILD_FLAGS: '{{.BUILD_FLAGS}}'
     cmds:
       - npm run {{.BUILD_COMMAND}} -q
     env:

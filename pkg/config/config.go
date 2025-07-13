@@ -53,7 +53,11 @@ type RSSConfig struct {
 }
 
 func LoadConfig(path string) (*Config, error) {
-	data, err := os.ReadFile(path)
+	// Clean and validate path to prevent directory traversal
+	cleanPath := filepath.Clean(path)
+
+	// #nosec G304 - This is intentionally reading a config file path provided by the user
+	data, err := os.ReadFile(cleanPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}

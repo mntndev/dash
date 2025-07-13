@@ -74,7 +74,7 @@ func (w *SplitWidget) SetChildren(children []Widget) {
 
 func (w *SplitWidget) Close() error {
 	for _, child := range w.Children {
-		child.Close()
+		_ = child.Close()
 	}
 	return nil
 }

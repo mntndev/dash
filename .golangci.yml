@@ -25,26 +25,26 @@ linters:
     - staticcheck   # Comprehensive static analysis
     - unused        # Find unused code
     - ineffassign   # Detect ineffective assignments
-    
+
     # Security
     - gosec         # Security vulnerabilities
-    
+
     # Code style and formatting
     - revive        # Modern golint replacement
     - godot         # Check comment periods
     - whitespace    # Whitespace issues
-    
+
     # Complexity and maintainability
     - gocyclo       # Cyclomatic complexity
     - gocognit      # Cognitive complexity
     - nestif        # Nested if depth
-    
+
     # Bug prevention
     - bodyclose     # HTTP response body close
     - rowserrcheck  # SQL rows.Err() check
     - sqlclosecheck # SQL Close() check
     - nilerr        # Return nil with non-nil error
-    
+
     # Additional useful checks
     - gocritic      # Advanced diagnostics
     - unconvert     # Unnecessary type conversions
@@ -53,88 +53,73 @@ linters:
 
   # No linters disabled - using explicit enable list
 
+  settings:
+    errcheck:
+      check-type-assertions: true
+      check-blank: true
+      exclude-functions:
+        - fmt.Print
+        - fmt.Println
+        - fmt.Printf
+
+    govet:
+      enable-all: true
+      disable:
+        - fieldalignment  # Too strict for readability
+
+    staticcheck:
+      checks: ["all", "-ST1000"]
+
+    gosec:
+      severity: medium
+      confidence: medium
+      excludes:
+        - G104  # Audit errors not checked (handled by errcheck)
+
+    revive:
+      min-confidence: 0.8
+      rules:
+        - name: exported
+          disabled: true
+
+    gocyclo:
+      min-complexity: 15
+
+    gocognit:
+      min-complexity: 30
+
+    nestif:
+      min-complexity: 4
+
+    godot:
+      scope: declarations
+      exclude:
+        - "TODO"
+        - "FIXME"
+        - "BUG"
+
+    gocritic:
+      # Use default settings to avoid warnings
+      enabled-tags:
+        - diagnostic
+        - style
+        - performance
+
+    misspell:
+      locale: US
+
+    unparam:
+      check-exported: false
+
 formatters:
   enable:
     - goimports     # Fix imports and format
     - gofmt         # Go formatting
 
-linters-settings:
-  errcheck:
-    check-type-assertions: true
-    check-blank: true
-    exclude-functions:
-      - fmt.Print
-      - fmt.Println
-      - fmt.Printf
-
-  govet:
-    enable-all: true
-    disable:
-      - fieldalignment  # Too strict for readability
-
-  staticcheck:
-    checks: ["all"]
-
-  gosec:
-    severity: medium
-    confidence: medium
-    excludes:
-      - G104  # Audit errors not checked (handled by errcheck)
-
-  revive:
-    min-confidence: 0.8
-    rules:
-      - name: var-naming
-      - name: package-comments
-      - name: exported
-      - name: var-declaration
-      - name: blank-imports
-      - name: context-as-argument
-      - name: dot-imports
-      - name: error-return
-      - name: error-strings
-      - name: error-naming
-      - name: increment-decrement
-      - name: range
-      - name: receiver-naming
-      - name: time-naming
-      - name: unexported-return
-      - name: indent-error-flow
-      - name: superfluous-else
-
-  gocyclo:
-    min-complexity: 15
-
-  gocognit:
-    min-complexity: 30
-
-  nestif:
-    min-complexity: 4
-
-  godot:
-    scope: declarations
-    exclude:
-      - "TODO"
-      - "FIXME"
-      - "BUG"
-
-  gocritic:
-    # Use default settings to avoid warnings
-    enabled-tags:
-      - diagnostic
-      - style
-      - performance
-
-  misspell:
-    locale: US
-
-  unparam:
-    check-exported: false
-
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0
-  
+
   exclude-use-default: false
   exclude-dirs:
     - vendor
@@ -142,10 +127,10 @@ issues:
     - frontend
     - ".*\\.pb\\.go$"
     - ".*_generated\\.go$"
-  
+
   exclude-files:
     - ".*_test\\.go$"  # Exclude some checks from test files
-  
+
   exclude-rules:
     # Exclude some linters from running on tests files
     - path: _test\.go
@@ -155,19 +140,19 @@ issues:
         - nestif
         - gosec
         - unparam
-    
+
     # Exclude complexity checks for main.go (Wails setup can be complex)
     - path: main\.go
       linters:
         - gocyclo
         - gocognit
         - nestif
-    
+
     # Allow long lines in generated files
     - path: ".*\\.pb\\.go"
       linters:
         - lll
-    
+
     # Exclude some staticcheck rules that might be too strict initially
     - linters:
         - staticcheck

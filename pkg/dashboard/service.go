@@ -203,14 +203,6 @@ func (ds *DashboardService) createWidgetWithChildren(config config.WidgetConfig,
 	return widget, nil
 }
 
-func (ds *DashboardService) emitDashboardInfo() {
-	ds.mu.RLock()
-	defer ds.mu.RUnlock()
-
-	dashboardInfo := ds.getDashboardInfo()
-	ds.eventEmitter.Emit("dashboard_info", dashboardInfo)
-}
-
 func (ds *DashboardService) getDashboardInfo() DashboardInfo {
 	status := make(map[string]interface{})
 
@@ -264,11 +256,11 @@ func (ds *DashboardService) Close() error {
 	ds.cancel()
 
 	if ds.haClient != nil {
-		ds.haClient.Close()
+		_ = ds.haClient.Close()
 	}
 
 	if ds.dexcomClient != nil {
-		ds.dexcomClient.Close()
+		_ = ds.dexcomClient.Close()
 	}
 
 	return nil
@@ -375,12 +367,12 @@ func (ds *DashboardService) ReloadConfig(ctx context.Context) error {
 	ds.config = newConfig
 
 	if ds.haClient != nil {
-		ds.haClient.Close()
+		_ = ds.haClient.Close()
 		ds.haClient = nil
 	}
 
 	if ds.dexcomClient != nil {
-		ds.dexcomClient.Close()
+		_ = ds.dexcomClient.Close()
 		ds.dexcomClient = nil
 	}
 

@@ -58,7 +58,7 @@ func (dc *DexcomClient) Connect() error {
 }
 
 func (dc *DexcomClient) updateLoop() {
-	dc.fetchGlucoseData()
+	_ = dc.fetchGlucoseData()
 
 	ticker := time.NewTicker(dc.updateInterval)
 	defer ticker.Stop()
@@ -68,7 +68,7 @@ func (dc *DexcomClient) updateLoop() {
 		case <-dc.ctx.Done():
 			return
 		case <-ticker.C:
-			dc.fetchGlucoseData()
+			_ = dc.fetchGlucoseData()
 		}
 	}
 }
@@ -80,7 +80,7 @@ func (dc *DexcomClient) fetchGlucoseData() error {
 	dc.mu.RUnlock()
 
 	if !connected || client == nil {
-		return fmt.Errorf("Dexcom client not connected")
+		return fmt.Errorf("dexcom client not connected")
 	}
 
 	log.Printf("Making Dexcom API request...")
@@ -107,7 +107,7 @@ func (dc *DexcomClient) GetLatestGlucose() (*dexcomshare.GlucoseEntry, time.Time
 	defer dc.mu.RUnlock()
 
 	if !dc.connected {
-		return nil, time.Time{}, fmt.Errorf("Dexcom client not connected")
+		return nil, time.Time{}, fmt.Errorf("dexcom client not connected")
 	}
 
 	if dc.lastEntry == nil {
@@ -123,7 +123,7 @@ func (dc *DexcomClient) GetHistoricalGlucose() ([]dexcomshare.GlucoseEntry, erro
 	defer dc.mu.RUnlock()
 
 	if !dc.connected {
-		return nil, fmt.Errorf("Dexcom client not connected")
+		return nil, fmt.Errorf("dexcom client not connected")
 	}
 
 	// Return a copy of the historical data
