@@ -1,5 +1,11 @@
 <script lang="ts">
-  import type { WidgetType, ClockData } from '../types';
+  import type { WidgetType, WidgetDataUpdateEvent } from '../types';
+  
+  interface ClockData {
+    time: string;
+    format: string;
+    display: string;
+  }
   import { Events } from '@wailsio/runtime';
   import { onMount, onDestroy } from 'svelte';
 
@@ -9,7 +15,7 @@
   let displayTime = $derived(clockData?.display || new Date().toLocaleTimeString());
 
   onMount(() => {
-    Events.On("widget_data_update", (event: any) => {
+    Events.On("widget_data_update", (event: WidgetDataUpdateEvent) => {
       if (event.data && event.data.length > 0) {
         const updateInfo = event.data[0];
         if (updateInfo.widget_id === widget.ID && updateInfo.data) {

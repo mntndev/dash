@@ -1,5 +1,13 @@
 <script lang="ts">
-    import type { WidgetType, HAEntityData } from "../types";
+    import type { WidgetType, WidgetDataUpdateEvent } from "../types";
+    
+    interface HAEntityData {
+        entity_id: string;
+        state: string;
+        attributes: Record<string, unknown>;
+        last_changed: string;
+        last_updated: string;
+    }
     import { DashboardService } from "../../bindings/github.com/mntndev/dash/pkg/dashboard";
     import { Events } from '@wailsio/runtime';
     import { onMount, onDestroy } from 'svelte';
@@ -11,7 +19,7 @@
     let entityData = $state<HAEntityData | null>(null);
 
     onMount(() => {
-        Events.On("widget_data_update", (event: any) => {
+        Events.On("widget_data_update", (event: WidgetDataUpdateEvent) => {
             if (event.data && event.data.length > 0) {
                 const updateInfo = event.data[0];
                 if (updateInfo.widget_id === widget.ID && updateInfo.data) {

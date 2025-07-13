@@ -14,46 +14,17 @@ export interface WidgetType {
   Children?: WidgetType[];
 }
 
-
-
-export interface HAEntityData {
-  entity_id: string;
-  state: string;
-  attributes: Record<string, any>;
-  last_changed: string;
-  last_updated: string;
-}
-
-export interface HAButtonData {
-  entity_id: string;
-  service: string;
-  domain: string;
-  label: string;
-}
-
-export interface ClockData {
-  time: string;
-  format: string;
-  display: string;
-}
-
-export interface DexcomData {
-  value: number;
-  trend: string;
-  timestamp: string;
-  unit: string;
-  historical?: DexcomReading[];
-  low_threshold: number;
-  high_threshold: number;
-}
-
-export interface DexcomReading {
-  value: number;
-  trend: string;
-  timestamp: string;
-}
-
 // Event interfaces for Wails runtime events
 export interface DashboardUpdateEvent {
   data: DashboardInfo[];
 }
+
+export interface WidgetUpdateInfo {
+  widget_id: string;
+  data: unknown;
+}
+
+export interface WidgetDataUpdateEvent {
+  data: WidgetUpdateInfo[];
+}
+

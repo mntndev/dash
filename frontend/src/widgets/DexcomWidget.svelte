@@ -1,5 +1,21 @@
 <script lang="ts">
-    import type { WidgetType, DexcomData } from "../types";
+    import type { WidgetType, WidgetDataUpdateEvent } from "../types";
+    
+    interface DexcomReading {
+        value: number;
+        trend: string;
+        timestamp: string;
+    }
+    
+    interface DexcomData {
+        value: number;
+        trend: string;
+        timestamp: string;
+        unit: string;
+        historical?: DexcomReading[];
+        low_threshold: number;
+        high_threshold: number;
+    }
     import { Events } from '@wailsio/runtime';
     import { onMount, onDestroy } from 'svelte';
 
@@ -14,7 +30,7 @@
     let glucoseData = $state<DexcomData | null>(null);
 
     onMount(() => {
-        Events.On("widget_data_update", (event: any) => {
+        Events.On("widget_data_update", (event: WidgetDataUpdateEvent) => {
             if (event.data && event.data.length > 0) {
                 const updateInfo = event.data[0];
                 if (updateInfo.widget_id === widget.ID && updateInfo.data) {
@@ -222,7 +238,7 @@
                     {/if}
 
                     <!-- Data points -->
-                    {#each sortedData as point}
+                    {#each sortedData as point (point.timestamp)}
                         {@const x = xScale(point.timestamp)}
                         {@const y = yScale(point.value)}
                         <circle cx={x} cy={y} r="3" fill="#e5e7eb" />
@@ -264,7 +280,7 @@
                     >
 
                     <!-- Time labels -->
-                    {#each xTimeLabels as timeLabel}
+                    {#each xTimeLabels as timeLabel (timeLabel.time)}
                         <line
                             x1={timeLabel.x}
                             y1={graphHeight}

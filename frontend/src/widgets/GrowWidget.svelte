@@ -1,5 +1,9 @@
 <script lang="ts">
-    import type { WidgetType } from "../types";
+    import type { WidgetType, WidgetDataUpdateEvent } from "../types";
+    
+    interface GrowData {
+        grow_value: string;
+    }
     import Widget from "../Widget.svelte";
     import { Events } from '@wailsio/runtime';
     import { onMount, onDestroy } from 'svelte';
@@ -9,11 +13,12 @@
     let growValue = $state("1");
 
     onMount(() => {
-        Events.On("widget_data_update", (event: any) => {
+        Events.On("widget_data_update", (event: WidgetDataUpdateEvent) => {
             if (event.data && event.data.length > 0) {
                 const updateInfo = event.data[0];
                 if (updateInfo.widget_id === widget.ID && updateInfo.data) {
-                    growValue = updateInfo.data?.grow_value || "1";
+                    const data = updateInfo.data as GrowData;
+                    growValue = data?.grow_value || "1";
                 }
             }
         });

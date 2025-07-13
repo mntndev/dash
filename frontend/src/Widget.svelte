@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { WidgetType } from './types';
+  import type { Component } from 'svelte';
   import ClockWidget from './widgets/ClockWidget.svelte';
   import HAEntityWidget from './widgets/HAEntityWidget.svelte';
   import HAButtonWidget from './widgets/HAButtonWidget.svelte';
@@ -14,7 +15,7 @@
 
   let currentWidget = $derived(widget);
 
-  const widgets: Record<string, any> = {
+  const widgets: Record<string, Component> = {
     'clock': ClockWidget,
     'home_assistant.entity': HAEntityWidget,
     'home_assistant.button': HAButtonWidget,
@@ -26,13 +27,13 @@
     'grow': GrowWidget
   };
 
-  let Component = $derived(currentWidget ? widgets[currentWidget.Type] : null);
+  let SelectedComponent = $derived(currentWidget ? widgets[currentWidget.Type] : null);
 
 </script>
 
-{#if Component && currentWidget}
+{#if SelectedComponent && currentWidget}
   {#key `${currentWidget.ID}-${currentWidget.Type}`}
-    <Component widget={currentWidget} />
+    <SelectedComponent widget={currentWidget} />
   {/key}
 {:else if currentWidget}
   <div class="flex items-center justify-center h-full text-gray-500 italic">
