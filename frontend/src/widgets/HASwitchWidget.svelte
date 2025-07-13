@@ -53,10 +53,10 @@
 <div 
     class="p-4 flex flex-col cursor-pointer hover:bg-gray-800 transition-colors duration-200 flex-none"
     class:opacity-75={isLoading}
-    on:click={toggleSwitch}
+    onclick={toggleSwitch}
     role="button"
     tabindex="0"
-    on:keydown={(e) => e.key === 'Enter' && toggleSwitch()}
+    onkeydown={(e) => e.key === 'Enter' && toggleSwitch()}
 >
     <div class="flex items-center gap-3 mb-4">
         <div

@@ -26,13 +26,13 @@
     'grow': GrowWidget
   };
 
-  let component = $derived(currentWidget ? widgets[currentWidget.Type] : null);
-  
+  let Component = $derived(currentWidget ? widgets[currentWidget.Type] : null);
+
 </script>
 
-{#if component && currentWidget}
+{#if Component && currentWidget}
   {#key `${currentWidget.ID}-${currentWidget.Type}`}
-    <svelte:component this={component} widget={currentWidget} />
+    <Component widget={currentWidget} />
   {/key}
 {:else if currentWidget}
   <div class="flex items-center justify-center h-full text-gray-500 italic">

@@ -142,10 +142,10 @@
     <!-- Light Name -->
     <div
         class="mb-4 cursor-pointer hover:bg-gray-800 transition-colors duration-200 p-2"
-        on:click={toggleLight}
+        onclick={toggleLight}
         role="button"
         tabindex="0"
-        on:keydown={(e) => e.key === "Enter" && toggleLight()}
+        onkeydown={(e) => e.key === "Enter" && toggleLight()}
     ></div>
 
     <!-- Icon and Brightness Column -->
@@ -156,10 +156,10 @@
             class:border-gray-200={isOn && !isLoading}
             class:bg-transparent={!isOn || isLoading}
             class:border-gray-500={!isOn || isLoading}
-            on:click={toggleLight}
+            onclick={toggleLight}
             role="button"
             tabindex="0"
-            on:keydown={(e) => e.key === "Enter" && toggleLight()}
+            onkeydown={(e) => e.key === "Enter" && toggleLight()}
         >
             {#if isLoading}
                 <div
@@ -190,11 +190,11 @@
                     min="1"
                     max="100"
                     value={localBrightnessPercent}
-                    on:mousedown={onBrightnessStart}
-                    on:mouseup={onBrightnessEnd}
-                    on:touchstart={onBrightnessStart}
-                    on:touchend={onBrightnessEnd}
-                    on:input={onBrightnessInput}
+                    onmousedown={onBrightnessStart}
+                    onmouseup={onBrightnessEnd}
+                    ontouchstart={onBrightnessStart}
+                    ontouchend={onBrightnessEnd}
+                    oninput={onBrightnessInput}
                     class="w-full h-5 bg-gray-800 appearance-none cursor-pointer slider"
                     disabled={isLoading}
                 />

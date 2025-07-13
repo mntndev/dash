@@ -60,3 +60,9 @@ This project uses Svelte 5. Importantly, this version adds support for *runes*.
   - Parent uses `<Component bind:value={myValue} />`
 - `$inspect` is a dev-only state tracker.
   - `$inspect(count)` to log changes in `count` during development.
+
+Svelte 5 components are dynamic! You never have to use `<svelte:componennt>`:
+
+  <!-- these are equivalent -->
+  <Thing />
+  <svelte:component this={Thing} />

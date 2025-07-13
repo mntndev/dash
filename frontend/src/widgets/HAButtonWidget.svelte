@@ -53,7 +53,7 @@
     <div class="flex flex-1 items-center justify-center">
         <button
             class="w-full h-12 md:h-14 border border-gray-500 text-gray-200 font-medium cursor-pointer transition-all duration-200 flex items-center justify-center min-h-11 hover:bg-gray-800 disabled:opacity-60 disabled:cursor-not-allowed"
-            on:click={triggerWidget}
+            onclick={triggerWidget}
             disabled={isLoading}
         >
             {#if isLoading}

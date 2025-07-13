@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-
 func TestCreateClockWidget(t *testing.T) {
 	tests := []struct {
 		name        string
