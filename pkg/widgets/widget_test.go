@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/goccy/go-yaml/ast"
 	"github.com/mntndev/dash/pkg/integrations"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -50,7 +51,7 @@ func TestWidgetRegistry(t *testing.T) {
 		provider := &MockProvider{}
 
 		// Test registering a widget
-		registry.Register("test_widget", func(id string, config map[string]interface{}, children []Widget, provider Provider) (Widget, error) {
+		registry.Register("test_widget", func(id string, config ast.Node, children []Widget, provider Provider) (Widget, error) {
 			return &BaseWidget{
 				ID:   id,
 				Type: "test_widget",
@@ -107,9 +108,9 @@ func TestDefaultWidgetFactory(t *testing.T) {
 
 	t.Run("create widgets with provider", func(t *testing.T) {
 		// Test creating a clock widget
-		widget, err := factory.Create("clock", "test_clock", map[string]interface{}{
+		widget, err := factory.Create("clock", "test_clock", configToNode(map[string]interface{}{
 			"format": "15:04:05",
-		}, nil)
+		}), nil)
 		require.NoError(t, err)
 		assert.Equal(t, "test_clock", widget.GetID())
 		assert.Equal(t, "clock", widget.GetType())
@@ -154,9 +155,9 @@ func TestWidgetManager(t *testing.T) {
 	manager := NewWidgetManager(factory)
 
 	t.Run("create and store widget", func(t *testing.T) {
-		err := manager.CreateWidget("test_widget", "clock", map[string]interface{}{
+		err := manager.CreateWidget("test_widget", "clock", configToNode(map[string]interface{}{
 			"format": "15:04:05",
-		}, nil)
+		}), nil)
 		require.NoError(t, err)
 
 		// Retrieve the widget
@@ -357,7 +358,7 @@ func TestBuiltinWidgetCreation(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			widget, err := factory.Create(tc.widgetType, "test_"+tc.widgetType, tc.config, nil)
+			widget, err := factory.Create(tc.widgetType, "test_"+tc.widgetType, configToNode(tc.config), nil)
 
 			if tc.shouldWork {
 				assert.NoError(t, err, "Should be able to create %s widget", tc.widgetType)
@@ -379,9 +380,9 @@ func BenchmarkWidgetCreation(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		widget, err := factory.Create("clock", "bench_clock", map[string]interface{}{
+		widget, err := factory.Create("clock", "bench_clock", configToNode(map[string]interface{}{
 			"format": "15:04:05",
-		}, nil)
+		}), nil)
 		if err != nil {
 			b.Fatal(err)
 		}

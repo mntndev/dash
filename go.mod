@@ -5,11 +5,11 @@ go 1.24.0
 toolchain go1.24.5
 
 require (
+	github.com/goccy/go-yaml v1.18.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/stretchr/testify v1.10.0
 	github.com/tgiv014/dexcom-share v0.0.0-20230407060014-4a7fb8995bae
 	github.com/wailsapp/wails/v3 v3.0.0-alpha.10
-	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -55,4 +55,5 @@ require (
 	golang.org/x/text v0.23.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

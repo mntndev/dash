@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/goccy/go-yaml"
+	"github.com/goccy/go-yaml/ast"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -176,9 +178,15 @@ func TestValidateWidget(t *testing.T) {
 			name: "valid clock widget",
 			widget: WidgetConfig{
 				Type: "clock",
-				Config: map[string]interface{}{
-					"format": "15:04:05",
-				},
+				Config: func() ast.Node {
+					node, err := yaml.ValueToNode(map[string]interface{}{
+						"format": "15:04:05",
+					})
+					if err != nil {
+						panic(err)
+					}
+					return node
+				}(),
 			},
 			expectError: false,
 		},

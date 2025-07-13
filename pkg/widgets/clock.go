@@ -2,8 +2,16 @@ package widgets
 
 import (
 	"context"
+	"fmt"
 	"time"
+
+	"github.com/goccy/go-yaml"
+	"github.com/goccy/go-yaml/ast"
 )
+
+type ClockConfig struct {
+	Format string `yaml:"format"`
+}
 
 type ClockWidget struct {
 	*BaseWidget
@@ -17,8 +25,16 @@ type ClockData struct {
 	Display string    `json:"display"`
 }
 
-func CreateClockWidget(id string, config map[string]interface{}, children []Widget) (Widget, error) {
-	format, _ := config["format"].(string)
+func CreateClockWidget(id string, config ast.Node, children []Widget) (Widget, error) {
+	// Parse config using NodeToValue
+	var clockConfig ClockConfig
+	if config != nil {
+		if err := yaml.NodeToValue(config, &clockConfig); err != nil {
+			return nil, fmt.Errorf("failed to parse clock config: %w", err)
+		}
+	}
+
+	format := clockConfig.Format
 	if format == "" {
 		format = "15:04:05" // default format
 	}

@@ -78,10 +78,8 @@ func getDefaultConfig() *config.Config {
 			Title: "My Dashboard",
 			Theme: "dark",
 			Widget: config.WidgetConfig{
-				Type: "clock",
-				Config: map[string]interface{}{
-					"format": "15:04:05",
-				},
+				Type:   "clock",
+				Config: nil,
 			},
 		},
 		Integrations: config.IntegrationsConfig{},

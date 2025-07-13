@@ -6,6 +6,8 @@ import (
 	"log"
 	"time"
 
+	"github.com/goccy/go-yaml"
+	"github.com/goccy/go-yaml/ast"
 	"github.com/mntndev/dash/pkg/integrations"
 )
 
@@ -35,7 +37,7 @@ type BrightnessControllable interface {
 }
 
 type Configurable interface {
-	Configure(config map[string]interface{}) error
+	Configure(config ast.Node) error
 }
 
 type Container interface {
@@ -45,12 +47,12 @@ type Container interface {
 }
 
 type BaseWidget struct {
-	ID         string
-	Type       string
-	Config     map[string]interface{}
-	Data       interface{}
-	LastUpdate time.Time
-	Children   []Widget
+	ID         string      `json:"ID"`
+	Type       string      `json:"Type"`
+	Config     ast.Node    `json:"-"`
+	Data       interface{} `json:"Data"`
+	LastUpdate time.Time   `json:"LastUpdate"`
+	Children   []Widget    `json:"Children"`
 }
 
 func (w *BaseWidget) GetID() string {
@@ -78,7 +80,7 @@ func (w *BaseWidget) Close() error {
 	return nil
 }
 
-type WidgetCreator func(id string, config map[string]interface{}, children []Widget, provider Provider) (Widget, error)
+type WidgetCreator func(id string, config ast.Node, children []Widget, provider Provider) (Widget, error)
 
 type WidgetRegistry struct {
 	creators map[string]WidgetCreator
@@ -94,7 +96,7 @@ func (wr *WidgetRegistry) Register(widgetType string, creator WidgetCreator) {
 	wr.creators[widgetType] = creator
 }
 
-func (wr *WidgetRegistry) Create(widgetType, id string, config map[string]interface{}, children []Widget, provider Provider) (Widget, error) {
+func (wr *WidgetRegistry) Create(widgetType, id string, config ast.Node, children []Widget, provider Provider) (Widget, error) {
 	creator, exists := wr.creators[widgetType]
 	if !exists {
 		return nil, fmt.Errorf("unsupported widget type: %s", widgetType)
@@ -111,7 +113,7 @@ func (wr *WidgetRegistry) GetSupportedTypes() []string {
 }
 
 type WidgetFactory interface {
-	Create(widgetType string, id string, config map[string]interface{}, children []Widget) (Widget, error)
+	Create(widgetType string, id string, config ast.Node, children []Widget) (Widget, error)
 	GetSupportedTypes() []string
 }
 
@@ -141,24 +143,24 @@ func registerBuiltinWidgets(registry *WidgetRegistry) {
 
 	registry.Register("dexcom", CreateDexcomWidget)
 
-	registry.Register("clock", func(id string, config map[string]interface{}, children []Widget, provider Provider) (Widget, error) {
+	registry.Register("clock", func(id string, config ast.Node, children []Widget, provider Provider) (Widget, error) {
 		return CreateClockWidget(id, config, children)
 	})
 
-	registry.Register("horizontal_split", func(id string, config map[string]interface{}, children []Widget, provider Provider) (Widget, error) {
+	registry.Register("horizontal_split", func(id string, config ast.Node, children []Widget, provider Provider) (Widget, error) {
 		return CreateHorizontalSplitWidget(id, config, children)
 	})
 
-	registry.Register("vertical_split", func(id string, config map[string]interface{}, children []Widget, provider Provider) (Widget, error) {
+	registry.Register("vertical_split", func(id string, config ast.Node, children []Widget, provider Provider) (Widget, error) {
 		return CreateVerticalSplitWidget(id, config, children)
 	})
 
-	registry.Register("grow", func(id string, config map[string]interface{}, children []Widget, provider Provider) (Widget, error) {
+	registry.Register("grow", func(id string, config ast.Node, children []Widget, provider Provider) (Widget, error) {
 		return CreateGrowWidget(id, config, children)
 	})
 }
 
-func (f *DefaultWidgetFactory) Create(widgetType, id string, config map[string]interface{}, children []Widget) (Widget, error) {
+func (f *DefaultWidgetFactory) Create(widgetType, id string, config ast.Node, children []Widget) (Widget, error) {
 	return f.registry.Create(widgetType, id, config, children, f.provider)
 }
 
@@ -178,7 +180,7 @@ func NewWidgetManager(factory WidgetFactory) *WidgetManager {
 	}
 }
 
-func (wm *WidgetManager) CreateWidget(id, widgetType string, config map[string]interface{}, children []Widget) error {
+func (wm *WidgetManager) CreateWidget(id, widgetType string, config ast.Node, children []Widget) error {
 	widget, err := wm.factory.Create(widgetType, id, config, children)
 	if err != nil {
 		return fmt.Errorf("failed to create widget %s: %w", id, err)
@@ -219,16 +221,31 @@ type GrowWidget struct {
 	GrowValue string
 }
 
-func CreateGrowWidget(id string, config map[string]interface{}, children []Widget) (Widget, error) {
-	// Parse grow value from config, default to "1"
+// GrowConfig represents configuration for grow widgets.
+type GrowConfig struct {
+	Grow interface{} `yaml:"grow"`
+}
+
+func CreateGrowWidget(id string, config ast.Node, children []Widget) (Widget, error) {
+	// Parse grow value from config using NodeToValue
+	var growConfig GrowConfig
+	if config != nil {
+		if err := yaml.NodeToValue(config, &growConfig); err != nil {
+			return nil, fmt.Errorf("failed to parse grow config: %w", err)
+		}
+	}
+
+	// Convert grow value to string, default to "1"
 	growValue := "1"
-	switch val := config["grow"].(type) {
-	case string:
-		growValue = val
-	case float64:
-		growValue = fmt.Sprintf("%.0f", val)
-	case int:
-		growValue = fmt.Sprintf("%d", val)
+	if growConfig.Grow != nil {
+		switch val := growConfig.Grow.(type) {
+		case string:
+			growValue = val
+		case float64:
+			growValue = fmt.Sprintf("%.0f", val)
+		case int:
+			growValue = fmt.Sprintf("%d", val)
+		}
 	}
 
 	widget := &GrowWidget{

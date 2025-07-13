@@ -7,13 +7,22 @@ import (
 	"strings"
 	"time"
 
+	"github.com/goccy/go-yaml"
+	"github.com/goccy/go-yaml/ast"
 	"github.com/mntndev/dash/pkg/integrations"
 )
+
+type DexcomConfig struct {
+	LowThreshold  int `yaml:"low_threshold"`
+	HighThreshold int `yaml:"high_threshold"`
+}
 
 type DexcomWidget struct {
 	*BaseWidget
 	dexcomProvider integrations.DexcomProvider
 	provider       Provider
+	lowThreshold   int
+	highThreshold  int
 }
 
 type DexcomData struct {
@@ -32,7 +41,25 @@ type DexcomReading struct {
 	Timestamp time.Time `json:"timestamp"`
 }
 
-func CreateDexcomWidget(id string, config map[string]interface{}, children []Widget, provider Provider) (Widget, error) {
+func CreateDexcomWidget(id string, config ast.Node, children []Widget, provider Provider) (Widget, error) {
+	// Parse config using NodeToValue
+	var dexcomConfig DexcomConfig
+	if config != nil {
+		if err := yaml.NodeToValue(config, &dexcomConfig); err != nil {
+			return nil, fmt.Errorf("failed to parse dexcom config: %w", err)
+		}
+	}
+
+	// Set defaults
+	lowThreshold := dexcomConfig.LowThreshold
+	if lowThreshold == 0 {
+		lowThreshold = 70
+	}
+	highThreshold := dexcomConfig.HighThreshold
+	if highThreshold == 0 {
+		highThreshold = 160
+	}
+
 	widget := &DexcomWidget{
 		BaseWidget: &BaseWidget{
 			ID:       id,
@@ -42,29 +69,19 @@ func CreateDexcomWidget(id string, config map[string]interface{}, children []Wid
 		},
 		dexcomProvider: provider,
 		provider:       provider,
+		lowThreshold:   lowThreshold,
+		highThreshold:  highThreshold,
 	}
 
 	return widget, nil
 }
 
 func (w *DexcomWidget) getLowThreshold() int {
-	if lowThreshold, ok := w.Config["low_threshold"].(int); ok {
-		return lowThreshold
-	}
-	if lowThreshold, ok := w.Config["low_threshold"].(float64); ok {
-		return int(lowThreshold)
-	}
-	return 70 // default
+	return w.lowThreshold
 }
 
 func (w *DexcomWidget) getHighThreshold() int {
-	if highThreshold, ok := w.Config["high_threshold"].(int); ok {
-		return highThreshold
-	}
-	if highThreshold, ok := w.Config["high_threshold"].(float64); ok {
-		return int(highThreshold)
-	}
-	return 160 // default
+	return w.highThreshold
 }
 
 func (w *DexcomWidget) Init(ctx context.Context) error {

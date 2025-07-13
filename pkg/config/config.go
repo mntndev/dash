@@ -5,7 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"gopkg.in/yaml.v3"
+	"github.com/goccy/go-yaml"
+	"github.com/goccy/go-yaml/ast"
 )
 
 type Config struct {
@@ -21,9 +22,9 @@ type DashboardConfig struct {
 }
 
 type WidgetConfig struct {
-	Type     string                 `yaml:"type"`
-	Config   map[string]interface{} `yaml:"config,omitempty"`
-	Children []WidgetConfig         `yaml:"children,omitempty"`
+	Type     string         `yaml:"type" json:"Type"`
+	Config   ast.Node       `yaml:"config,omitempty" json:"-"`
+	Children []WidgetConfig `yaml:"children,omitempty" json:"Children,omitempty"`
 }
 
 type IntegrationsConfig struct {

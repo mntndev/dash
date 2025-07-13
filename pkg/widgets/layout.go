@@ -2,9 +2,17 @@ package widgets
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"time"
+
+	"github.com/goccy/go-yaml"
+	"github.com/goccy/go-yaml/ast"
 )
+
+type SplitConfig struct {
+	Sizes []float64 `yaml:"sizes"`
+}
 
 type SplitWidget struct {
 	*BaseWidget
@@ -18,26 +26,24 @@ type LayoutData struct {
 	Sizes     []float64 `json:"sizes,omitempty"`
 }
 
-func CreateHorizontalSplitWidget(id string, config map[string]interface{}, children []Widget) (Widget, error) {
+func CreateHorizontalSplitWidget(id string, config ast.Node, children []Widget) (Widget, error) {
 	return createSplitWidget(id, config, children, "horizontal_split", "horizontal")
 }
 
-func CreateVerticalSplitWidget(id string, config map[string]interface{}, children []Widget) (Widget, error) {
+func CreateVerticalSplitWidget(id string, config ast.Node, children []Widget) (Widget, error) {
 	return createSplitWidget(id, config, children, "vertical_split", "vertical")
 }
 
-func createSplitWidget(id string, config map[string]interface{}, children []Widget, widgetType, direction string) (Widget, error) {
-	var sizes []float64
-	if sizesInterface, ok := config["sizes"]; ok {
-		if sizesSlice, ok := sizesInterface.([]interface{}); ok {
-			sizes = make([]float64, len(sizesSlice))
-			for i, v := range sizesSlice {
-				if f, ok := v.(float64); ok {
-					sizes[i] = f
-				}
-			}
+func createSplitWidget(id string, config ast.Node, children []Widget, widgetType, direction string) (Widget, error) {
+	// Parse config using NodeToValue
+	var splitConfig SplitConfig
+	if config != nil {
+		if err := yaml.NodeToValue(config, &splitConfig); err != nil {
+			return nil, fmt.Errorf("failed to parse split config: %w", err)
 		}
 	}
+
+	sizes := splitConfig.Sizes
 
 	widget := &SplitWidget{
 		BaseWidget: &BaseWidget{

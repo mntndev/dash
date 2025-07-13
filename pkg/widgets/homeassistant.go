@@ -6,8 +6,22 @@ import (
 	"log"
 	"time"
 
+	"github.com/goccy/go-yaml"
+	"github.com/goccy/go-yaml/ast"
 	"github.com/mntndev/dash/pkg/integrations"
 )
+
+// HAEntityConfig represents Home Assistant entity configuration.
+type HAEntityConfig struct {
+	EntityID string `yaml:"entity_id"`
+}
+
+type HAButtonConfig struct {
+	EntityID string `yaml:"entity_id"`
+	Service  string `yaml:"service"`
+	Domain   string `yaml:"domain"`
+	Label    string `yaml:"label"`
+}
 
 type HABaseWidget struct {
 	*BaseWidget
@@ -178,9 +192,16 @@ func (hab *HABaseWidget) stopSubscription() {
 	}
 }
 
-func CreateHAEntityWidget(id string, config map[string]interface{}, children []Widget, provider Provider) (Widget, error) {
-	entityID, ok := config["entity_id"].(string)
-	if !ok || entityID == "" {
+func CreateHAEntityWidget(id string, config ast.Node, children []Widget, provider Provider) (Widget, error) {
+	// Parse config using NodeToValue
+	var haConfig HAEntityConfig
+	if config != nil {
+		if err := yaml.NodeToValue(config, &haConfig); err != nil {
+			return nil, fmt.Errorf("failed to parse HA entity config: %w", err)
+		}
+	}
+
+	if haConfig.EntityID == "" {
 		return nil, fmt.Errorf("entity_id is required")
 	}
 
@@ -192,7 +213,7 @@ func CreateHAEntityWidget(id string, config map[string]interface{}, children []W
 				Config:   config,
 				Children: children,
 			},
-			EntityID:   entityID,
+			EntityID:   haConfig.EntityID,
 			haProvider: provider,
 			provider:   provider,
 		},
@@ -201,9 +222,16 @@ func CreateHAEntityWidget(id string, config map[string]interface{}, children []W
 	return widget, nil
 }
 
-func CreateHASwitchWidget(id string, config map[string]interface{}, children []Widget, provider Provider) (Widget, error) {
-	entityID, ok := config["entity_id"].(string)
-	if !ok || entityID == "" {
+func CreateHASwitchWidget(id string, config ast.Node, children []Widget, provider Provider) (Widget, error) {
+	// Parse config using NodeToValue
+	var haConfig HAEntityConfig
+	if config != nil {
+		if err := yaml.NodeToValue(config, &haConfig); err != nil {
+			return nil, fmt.Errorf("failed to parse HA switch config: %w", err)
+		}
+	}
+
+	if haConfig.EntityID == "" {
 		return nil, fmt.Errorf("entity_id is required")
 	}
 
@@ -215,7 +243,7 @@ func CreateHASwitchWidget(id string, config map[string]interface{}, children []W
 				Config:   config,
 				Children: children,
 			},
-			EntityID:   entityID,
+			EntityID:   haConfig.EntityID,
 			haProvider: provider,
 			provider:   provider,
 		},
@@ -224,9 +252,16 @@ func CreateHASwitchWidget(id string, config map[string]interface{}, children []W
 	return widget, nil
 }
 
-func CreateHALightWidget(id string, config map[string]interface{}, children []Widget, provider Provider) (Widget, error) {
-	entityID, ok := config["entity_id"].(string)
-	if !ok || entityID == "" {
+func CreateHALightWidget(id string, config ast.Node, children []Widget, provider Provider) (Widget, error) {
+	// Parse config using NodeToValue
+	var haConfig HAEntityConfig
+	if config != nil {
+		if err := yaml.NodeToValue(config, &haConfig); err != nil {
+			return nil, fmt.Errorf("failed to parse HA light config: %w", err)
+		}
+	}
+
+	if haConfig.EntityID == "" {
 		return nil, fmt.Errorf("entity_id is required")
 	}
 
@@ -238,7 +273,7 @@ func CreateHALightWidget(id string, config map[string]interface{}, children []Wi
 				Config:   config,
 				Children: children,
 			},
-			EntityID:   entityID,
+			EntityID:   haConfig.EntityID,
 			haProvider: provider,
 			provider:   provider,
 		},
@@ -247,23 +282,28 @@ func CreateHALightWidget(id string, config map[string]interface{}, children []Wi
 	return widget, nil
 }
 
-func CreateHAButtonWidget(id string, config map[string]interface{}, children []Widget, provider Provider) (Widget, error) {
-	entityID, ok := config["entity_id"].(string)
-	if !ok || entityID == "" {
+func CreateHAButtonWidget(id string, config ast.Node, children []Widget, provider Provider) (Widget, error) {
+	// Parse config using NodeToValue
+	var haConfig HAButtonConfig
+	if config != nil {
+		if err := yaml.NodeToValue(config, &haConfig); err != nil {
+			return nil, fmt.Errorf("failed to parse HA button config: %w", err)
+		}
+	}
+
+	if haConfig.EntityID == "" {
 		return nil, fmt.Errorf("entity_id is required")
 	}
 
-	service, ok := config["service"].(string)
-	if !ok || service == "" {
+	if haConfig.Service == "" {
 		return nil, fmt.Errorf("service is required")
 	}
 
-	domain, ok := config["domain"].(string)
-	if !ok || domain == "" {
+	if haConfig.Domain == "" {
 		return nil, fmt.Errorf("domain is required")
 	}
 
-	label, _ := config["label"].(string)
+	label := haConfig.Label
 	if label == "" {
 		label = "Button"
 	}
@@ -276,18 +316,18 @@ func CreateHAButtonWidget(id string, config map[string]interface{}, children []W
 				Config:   config,
 				Children: children,
 			},
-			EntityID:   entityID,
+			EntityID:   haConfig.EntityID,
 			haProvider: provider,
 			provider:   provider,
 		},
-		Service: service,
-		Domain:  domain,
+		Service: haConfig.Service,
+		Domain:  haConfig.Domain,
 	}
 
 	widget.Data = &HAButtonData{
-		EntityID: entityID,
-		Service:  service,
-		Domain:   domain,
+		EntityID: haConfig.EntityID,
+		Service:  haConfig.Service,
+		Domain:   haConfig.Domain,
 		Label:    label,
 	}
 

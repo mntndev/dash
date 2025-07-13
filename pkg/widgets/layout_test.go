@@ -62,7 +62,7 @@ func TestCreateHorizontalSplitWidget(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			widget, err := CreateHorizontalSplitWidget(tt.id, tt.config, tt.children)
+			widget, err := CreateHorizontalSplitWidget(tt.id, nil, tt.children)
 
 			if tt.expectError {
 				assert.Error(t, err)
@@ -129,7 +129,7 @@ func TestCreateVerticalSplitWidget(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			widget, err := CreateVerticalSplitWidget(tt.id, tt.config, tt.children)
+			widget, err := CreateVerticalSplitWidget(tt.id, nil, tt.children)
 
 			if tt.expectError {
 				assert.Error(t, err)
@@ -225,7 +225,7 @@ func TestCreateGrowWidget(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			widget, err := CreateGrowWidget(tt.id, tt.config, tt.children)
+			widget, err := CreateGrowWidget(tt.id, nil, tt.children)
 
 			if tt.expectError {
 				assert.Error(t, err)
@@ -243,9 +243,9 @@ func TestCreateGrowWidget(t *testing.T) {
 
 func TestHorizontalSplitWidgetInit(t *testing.T) {
 	children := createTestChildren(2)
-	widget, err := CreateHorizontalSplitWidget("test_hsplit", map[string]interface{}{
+	widget, err := CreateHorizontalSplitWidget("test_hsplit", configToNode(map[string]interface{}{
 		"sizes": []interface{}{0.4, 0.6},
-	}, children)
+	}), children)
 	require.NoError(t, err)
 
 	hsplit := widget.(*SplitWidget)
@@ -296,9 +296,9 @@ func TestVerticalSplitWidgetInit(t *testing.T) {
 
 func TestGrowWidgetInit(t *testing.T) {
 	children := createTestChildren(1)
-	widget, err := CreateGrowWidget("test_grow", map[string]interface{}{
+	widget, err := CreateGrowWidget("test_grow", configToNode(map[string]interface{}{
 		"grow": "2",
-	}, children)
+	}), children)
 	require.NoError(t, err)
 
 	growWidget := widget.(*GrowWidget)
@@ -393,24 +393,24 @@ func TestGrowWidgetGetGrowValue(t *testing.T) {
 		},
 		{
 			name:     "string grow value",
-			config:   map[string]interface{}{"grow": "3"},
+			config:   nil,
 			expected: "3",
 		},
 		{
 			name:     "float grow value",
-			config:   map[string]interface{}{"grow": 2.0},
+			config:   nil,
 			expected: "2",
 		},
 		{
 			name:     "int grow value",
-			config:   map[string]interface{}{"grow": 5},
+			config:   nil,
 			expected: "5",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			widget, err := CreateGrowWidget("test_grow", tt.config, nil)
+			widget, err := CreateGrowWidget("test_grow", nil, nil)
 			require.NoError(t, err)
 
 			growWidget := widget.(*GrowWidget)
@@ -440,7 +440,7 @@ func BenchmarkHorizontalSplitWidgetCreation(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		widget, err := CreateHorizontalSplitWidget("bench_hsplit", config, children)
+		widget, err := CreateHorizontalSplitWidget("bench_hsplit", configToNode(config), children)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -451,9 +451,9 @@ func BenchmarkHorizontalSplitWidgetCreation(b *testing.B) {
 }
 
 func BenchmarkGrowWidgetInit(b *testing.B) {
-	widget, err := CreateGrowWidget("bench_grow", map[string]interface{}{
+	widget, err := CreateGrowWidget("bench_grow", configToNode(map[string]interface{}{
 		"grow": "2",
-	}, createTestChildren(1))
+	}), createTestChildren(1))
 	if err != nil {
 		b.Fatal(err)
 	}
