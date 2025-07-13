@@ -1,46 +1,20 @@
 <script lang="ts">
-    import type { WidgetType, WidgetDataUpdateEvent } from "../types";
-    
-    interface HAEntityData {
-        entity_id: string;
-        state: string;
-        attributes: Record<string, unknown>;
-        last_changed: string;
-        last_updated: string;
-    }
+    import type { WidgetType } from "../types";
+    import { useHAEntity } from "../composables/useHAEntity.svelte";
     import { DashboardService } from "../../bindings/github.com/mntndev/dash/pkg/dashboard";
-    import { Events } from '@wailsio/runtime';
-    import { onMount, onDestroy } from 'svelte';
 
     let { widget }: { widget: WidgetType } = $props();
+
+    const { entity } = useHAEntity(widget);
 
     let isLoading = $state(false);
     let localBrightnessPercent = $state(0);
     let userInteracting = $state(false);
     let initialized = $state(false);
 
-    // Derived values using runes
-    let entityData = $state<HAEntityData | null>(null);
-
-    onMount(() => {
-        Events.On("widget_data_update", (event: WidgetDataUpdateEvent) => {
-            if (event.data && event.data.length > 0) {
-                const updateInfo = event.data[0];
-                if (updateInfo.widget_id === widget.ID && updateInfo.data) {
-                    entityData = updateInfo.data as HAEntityData;
-                }
-            }
-        });
-    });
-
-    onDestroy(() => {
-        Events.Off("widget_data_update");
-    });
-    let entityName = $derived(
-        entityData?.entity_id?.split(".")[1]?.replace(/_/g, " ") || "Unknown",
-    );
-    let isOn = $derived(entityData?.state === "on");
-    let brightness = $derived(entityData?.attributes?.brightness || 0);
+    let entityName = $derived(entity.data?.entity_id?.split('.')[1]?.replace(/_/g, ' ') || 'Unknown');
+    let isOn = $derived(entity.data?.state === "on");
+    let brightness = $derived(entity.data?.attributes?.brightness || 0);
     let maxBrightness = $derived(255); // Home Assistant brightness range is 0-255
     let brightnessPercent = $derived(
         Math.round((brightness / maxBrightness) * 100),
@@ -48,8 +22,8 @@
     
     // Log any changes in entityData
     $effect(() => {
-        if (entityData) {
-            console.log(`[HA Light] ${entityData.entity_id} data updated:`, entityData);
+        if (entity.data) {
+            console.log(`[HA Light] ${entity.data.entity_id} data updated:`, entity.data);
         }
     });
 
