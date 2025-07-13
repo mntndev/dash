@@ -250,8 +250,8 @@ func TestConfigPathFunctions(t *testing.T) {
 		paths := getConfigPaths()
 		assert.Contains(t, paths, filepath.Join(".", "config.yaml"))
 
-		homeDir, _ := os.UserHomeDir()
-		if homeDir != "" {
+		homeDir, err := os.UserHomeDir()
+		if err == nil && homeDir != "" {
 			expectedHomePath := filepath.Join(homeDir, ".config", "dash", "config.yaml")
 			assert.Contains(t, paths, expectedHomePath)
 		}

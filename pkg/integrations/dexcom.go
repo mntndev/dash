@@ -58,7 +58,9 @@ func (dc *DexcomClient) Connect() error {
 }
 
 func (dc *DexcomClient) updateLoop() {
-	_ = dc.fetchGlucoseData()
+	if err := dc.fetchGlucoseData(); err != nil {
+		log.Printf("Failed to fetch initial glucose data: %v", err)
+	}
 
 	ticker := time.NewTicker(dc.updateInterval)
 	defer ticker.Stop()
@@ -68,7 +70,9 @@ func (dc *DexcomClient) updateLoop() {
 		case <-dc.ctx.Done():
 			return
 		case <-ticker.C:
-			_ = dc.fetchGlucoseData()
+			if err := dc.fetchGlucoseData(); err != nil {
+				log.Printf("Failed to fetch glucose data: %v", err)
+			}
 		}
 	}
 }

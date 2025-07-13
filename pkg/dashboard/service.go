@@ -256,11 +256,15 @@ func (ds *DashboardService) Close() error {
 	ds.cancel()
 
 	if ds.haClient != nil {
-		_ = ds.haClient.Close()
+		if err := ds.haClient.Close(); err != nil {
+			log.Printf("Failed to close Home Assistant client: %v", err)
+		}
 	}
 
 	if ds.dexcomClient != nil {
-		_ = ds.dexcomClient.Close()
+		if err := ds.dexcomClient.Close(); err != nil {
+			log.Printf("Failed to close Dexcom client: %v", err)
+		}
 	}
 
 	return nil
@@ -367,12 +371,16 @@ func (ds *DashboardService) ReloadConfig(ctx context.Context) error {
 	ds.config = newConfig
 
 	if ds.haClient != nil {
-		_ = ds.haClient.Close()
+		if err := ds.haClient.Close(); err != nil {
+			log.Printf("Failed to close Home Assistant client during config reload: %v", err)
+		}
 		ds.haClient = nil
 	}
 
 	if ds.dexcomClient != nil {
-		_ = ds.dexcomClient.Close()
+		if err := ds.dexcomClient.Close(); err != nil {
+			log.Printf("Failed to close Dexcom client during config reload: %v", err)
+		}
 		ds.dexcomClient = nil
 	}
 

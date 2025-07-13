@@ -3,6 +3,7 @@ package widgets
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/mntndev/dash/pkg/integrations"
@@ -206,7 +207,9 @@ func (wm *WidgetManager) GetFactory() WidgetFactory {
 
 func (wm *WidgetManager) RemoveWidget(id string) {
 	if widget, exists := wm.widgets[id]; exists {
-		_ = widget.Close()
+		if err := widget.Close(); err != nil {
+			log.Printf("Failed to close widget %s: %v", id, err)
+		}
 		delete(wm.widgets, id)
 	}
 }

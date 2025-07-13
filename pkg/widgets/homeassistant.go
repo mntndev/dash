@@ -304,7 +304,9 @@ func (w *HAEntityWidget) Init(ctx context.Context) error {
 
 	// Start subscription asynchronously to avoid blocking widget initialization
 	go func() {
-		_ = w.startSubscription(ctx)
+		if err := w.startSubscription(ctx); err != nil {
+			fmt.Printf("Failed to start subscription for HA widget %s: %v\n", w.EntityID, err)
+		}
 	}()
 	return nil
 }
@@ -329,7 +331,9 @@ func (w *HASwitchWidget) Init(ctx context.Context) error {
 	}()
 	// Start subscription asynchronously to avoid blocking widget initialization
 	go func() {
-		_ = w.startSubscription(ctx)
+		if err := w.startSubscription(ctx); err != nil {
+			fmt.Printf("Failed to start subscription for HA widget %s: %v\n", w.EntityID, err)
+		}
 	}()
 	return nil
 }
@@ -355,7 +359,9 @@ func (w *HALightWidget) Init(ctx context.Context) error {
 
 	// Start subscription asynchronously to avoid blocking widget initialization
 	go func() {
-		_ = w.startSubscription(ctx)
+		if err := w.startSubscription(ctx); err != nil {
+			fmt.Printf("Failed to start subscription for HA widget %s: %v\n", w.EntityID, err)
+		}
 	}()
 	return nil
 }

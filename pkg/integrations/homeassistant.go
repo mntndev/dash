@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/url"
 	"sync"
 	"time"
@@ -144,7 +145,9 @@ func (ha *HomeAssistantClient) readMessages() {
 		ha.authenticated = false
 		ha.mu.Unlock()
 		if ha.conn != nil {
-			_ = ha.conn.Close()
+			if err := ha.conn.Close(); err != nil {
+				log.Printf("Failed to close WebSocket connection: %v", err)
+			}
 		}
 	}()
 
@@ -280,7 +283,10 @@ func (ha *HomeAssistantClient) GetStates() ([]HAEntityState, error) {
 		}
 
 		var states []HAEntityState
-		statesData, _ := json.Marshal(msg.Result)
+		statesData, err := json.Marshal(msg.Result)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal states data: %w", err)
+		}
 		if err := json.Unmarshal(statesData, &states); err != nil {
 			return nil, fmt.Errorf("failed to parse states: %w", err)
 		}
@@ -421,15 +427,29 @@ func (sm *SubscriptionManager) processStateChangeEvent(event HAEvent) {
 	var newState, oldState *HAEntityState
 
 	if newStateData, ok := data["new_state"]; ok && newStateData != nil {
-		newStateBytes, _ := json.Marshal(newStateData)
-		newState = &HAEntityState{}
-		_ = json.Unmarshal(newStateBytes, newState)
+		newStateBytes, err := json.Marshal(newStateData)
+		if err != nil {
+			log.Printf("Failed to marshal new state data: %v", err)
+		} else {
+			newState = &HAEntityState{}
+			if err := json.Unmarshal(newStateBytes, newState); err != nil {
+				log.Printf("Failed to unmarshal new state: %v", err)
+				newState = nil
+			}
+		}
 	}
 
 	if oldStateData, ok := data["old_state"]; ok && oldStateData != nil {
-		oldStateBytes, _ := json.Marshal(oldStateData)
-		oldState = &HAEntityState{}
-		_ = json.Unmarshal(oldStateBytes, oldState)
+		oldStateBytes, err := json.Marshal(oldStateData)
+		if err != nil {
+			log.Printf("Failed to marshal old state data: %v", err)
+		} else {
+			oldState = &HAEntityState{}
+			if err := json.Unmarshal(oldStateBytes, oldState); err != nil {
+				log.Printf("Failed to unmarshal old state: %v", err)
+				oldState = nil
+			}
+		}
 	}
 
 	stateEvent := StateChangeEvent{

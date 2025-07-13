@@ -3,6 +3,7 @@ package widgets
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 )
 
@@ -74,7 +75,9 @@ func (w *SplitWidget) SetChildren(children []Widget) {
 
 func (w *SplitWidget) Close() error {
 	for _, child := range w.Children {
-		_ = child.Close()
+		if err := child.Close(); err != nil {
+			log.Printf("Failed to close child widget: %v", err)
+		}
 	}
 	return nil
 }

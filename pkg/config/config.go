@@ -126,7 +126,11 @@ func findConfigFile() string {
 
 // getConfigPaths returns all possible config file locations in order of preference.
 func getConfigPaths() []string {
-	homeDir, _ := os.UserHomeDir()
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		// If we can't get home directory, only use current directory
+		return []string{filepath.Join(".", "config.yaml")}
+	}
 
 	paths := []string{
 		filepath.Join(".", "config.yaml"),                        // Current directory
