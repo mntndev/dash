@@ -52,3 +52,8 @@ export interface DexcomReading {
   trend: string;
   timestamp: string;
 }
+
+// Event interfaces for Wails runtime events
+export interface DashboardUpdateEvent {
+  data: DashboardInfo[];
+}
