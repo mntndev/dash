@@ -58,6 +58,11 @@ tasks:
       - go test ./pkg/... -coverprofile=coverage.out
       - go tool cover -html=coverage.out -o coverage.html
 
+  fmt:
+    summary: Format Go code using go fmt
+    cmds:
+      - go fmt ./...
+
   check:
     summary: Run all quality checks (test + lint)
     deps:

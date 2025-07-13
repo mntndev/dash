@@ -1,6 +1,6 @@
 <script lang="ts">
     import type { WidgetType, HAButtonData } from "../types";
-    import { DashboardService } from "../../../bindings/github.com/mntndev/dash/pkg/dashboard";
+    import { DashboardService } from "../../bindings/github.com/mntndev/dash/pkg/dashboard";
     import { Events } from '@wailsio/runtime';
     import { onMount, onDestroy } from 'svelte';
     

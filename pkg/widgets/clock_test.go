@@ -4,23 +4,10 @@ import (
 	"context"
 	"testing"
 
-	"github.com/goccy/go-yaml"
-	"github.com/goccy/go-yaml/ast"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// Helper function to convert map to ast.Node for tests.
-func configToNode(config map[string]interface{}) ast.Node {
-	if config == nil {
-		return nil
-	}
-	node, err := yaml.ValueToNode(config)
-	if err != nil {
-		panic(err) // Should not happen in tests
-	}
-	return node
-}
 
 func TestCreateClockWidget(t *testing.T) {
 	tests := []struct {
@@ -95,7 +82,7 @@ func TestCreateClockWidget(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			widget, err := CreateClockWidget(tt.id, configToNode(tt.config), nil)
+			widget, err := CreateClockWidget(tt.id, configToNode(tt.config), nil, nil)
 
 			if tt.expectError {
 				assert.Error(t, err)
@@ -172,7 +159,7 @@ func TestClockWidgetInit(t *testing.T) {
 				config["format"] = tt.format
 			}
 
-			widget, err := CreateClockWidget("test_clock", configToNode(config), nil)
+			widget, err := CreateClockWidget("test_clock", configToNode(config), nil, nil)
 			require.NoError(t, err)
 
 			clockWidget := widget.(*ClockWidget)
@@ -196,7 +183,7 @@ func TestClockWidgetInit(t *testing.T) {
 func TestClockWidgetDataUpdates(t *testing.T) {
 	widget, err := CreateClockWidget("test_clock", configToNode(map[string]interface{}{
 		"format": "15:04:05",
-	}), nil)
+	}), nil, nil)
 	require.NoError(t, err)
 
 	clockWidget := widget.(*ClockWidget)
@@ -227,7 +214,7 @@ func TestClockWidgetConfigValidation(t *testing.T) {
 		expectError bool
 		expected    string
 	}{
-		{"valid format", nil, false, "2006-01-02"},
+		{"valid format", map[string]interface{}{"format": "2006-01-02"}, false, "2006-01-02"},
 		{"nil config uses default", nil, false, "15:04:05"},
 		{"empty config uses default", nil, false, "15:04:05"},
 		{"invalid format type uses default", nil, false, "15:04:05"},
@@ -235,7 +222,7 @@ func TestClockWidgetConfigValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			widget, err := CreateClockWidget("test_clock", configToNode(nil), nil)
+			widget, err := CreateClockWidget("test_clock", configToNode(tt.config), nil, nil)
 
 			if tt.expectError {
 				assert.Error(t, err)
@@ -250,7 +237,7 @@ func TestClockWidgetConfigValidation(t *testing.T) {
 }
 
 func TestClockWidgetClose(t *testing.T) {
-	widget, err := CreateClockWidget("test_clock", configToNode(nil), nil)
+	widget, err := CreateClockWidget("test_clock", configToNode(nil), nil, nil)
 	require.NoError(t, err)
 
 	// Close should not error
@@ -261,7 +248,7 @@ func TestClockWidgetClose(t *testing.T) {
 func TestClockWidgetGetters(t *testing.T) {
 	widget, err := CreateClockWidget("test_clock", configToNode(map[string]interface{}{
 		"format": "2006-01-02 15:04:05",
-	}), nil)
+	}), nil, nil)
 	require.NoError(t, err)
 
 	assert.Equal(t, "test_clock", widget.GetID())
@@ -279,7 +266,7 @@ func TestClockWidgetGetters(t *testing.T) {
 func TestClockWidgetDataStructure(t *testing.T) {
 	widget, err := CreateClockWidget("test_clock", configToNode(map[string]interface{}{
 		"format": "15:04:05",
-	}), nil)
+	}), nil, nil)
 	require.NoError(t, err)
 
 	clockWidget := widget.(*ClockWidget)
@@ -312,7 +299,7 @@ func BenchmarkClockWidgetCreation(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		widget, err := CreateClockWidget("bench_clock", configToNode(config), nil)
+		widget, err := CreateClockWidget("bench_clock", configToNode(config), nil, nil)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -325,7 +312,7 @@ func BenchmarkClockWidgetCreation(b *testing.B) {
 func BenchmarkClockWidgetInit(b *testing.B) {
 	widget, err := CreateClockWidget("bench_clock", configToNode(map[string]interface{}{
 		"format": "15:04:05",
-	}), nil)
+	}), nil, nil)
 	if err != nil {
 		b.Fatal(err)
 	}

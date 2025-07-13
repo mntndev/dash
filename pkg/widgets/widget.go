@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/goccy/go-yaml"
@@ -143,9 +144,7 @@ func registerBuiltinWidgets(registry *WidgetRegistry) {
 
 	registry.Register("dexcom", CreateDexcomWidget)
 
-	registry.Register("clock", func(id string, config ast.Node, children []Widget, provider Provider) (Widget, error) {
-		return CreateClockWidget(id, config, children, provider)
-	})
+	registry.Register("clock", CreateClockWidget)
 
 	registry.Register("horizontal_split", func(id string, config ast.Node, children []Widget, provider Provider) (Widget, error) {
 		return CreateHorizontalSplitWidget(id, config, children)
@@ -240,11 +239,18 @@ func CreateGrowWidget(id string, config ast.Node, children []Widget) (Widget, er
 	if growConfig.Grow != nil {
 		switch val := growConfig.Grow.(type) {
 		case string:
-			growValue = val
+			growValue = strings.Trim(val, `"`)
 		case float64:
 			growValue = fmt.Sprintf("%.0f", val)
 		case int:
 			growValue = fmt.Sprintf("%d", val)
+		case int64:
+			growValue = fmt.Sprintf("%d", val)
+		case uint64:
+			growValue = fmt.Sprintf("%d", val)
+		default:
+			// If we can't handle the type, fallback to default
+			growValue = "1"
 		}
 	}
 

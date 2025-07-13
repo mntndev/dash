@@ -3,6 +3,7 @@ package widgets
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/goccy/go-yaml"
@@ -35,7 +36,7 @@ func CreateClockWidget(id string, config ast.Node, children []Widget, provider P
 		}
 	}
 
-	format := clockConfig.Format
+	format := strings.Trim(clockConfig.Format, `"`)
 	if format == "" {
 		format = "15:04:05" // default format
 	}
@@ -87,7 +88,7 @@ func (w *ClockWidget) startClockUpdater(ctx context.Context) {
 				Display: now.Format(w.Format),
 			}
 			w.LastUpdate = now
-			
+
 			// Emit widget data update event
 			if w.provider != nil {
 				w.provider.Emit("widget_data_update", map[string]interface{}{

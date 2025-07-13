@@ -1,65 +1,62 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This is a Wails v3 desktop application built with Go and Svelte. Wails automates the process of building and packaging the Svelte frontend and Go backend into a single executable.
 
 ## Commands
 
-### Development
-- `wails3 dev` - Run in development mode with hot-reload
-- `task dev` - Alternative way to run development mode
+All project tasks are made available through the taskfile. You can run, but are not limited to, the following commands:
 
-### Build
-- `wails3 build` - Build production executable
-- `task build` - Build using task runner (cross-platform)
-- `task package` - Package production build
-- `task run` - Run the built application
-
-### Frontend Development
-- `cd frontend && npm run dev` - Run Vite dev server
-- `cd frontend && npm run build` - Build frontend for production
-- `cd frontend && npm run check` - Run Svelte type checking
+- `task build`: Build the application for the current platform.
+- `task dev`: Run the application in development mode.
+- `task test`: Run the tests.
+- `task lint`: Run the linter.
+- `task fmt`: Format the code.
 
 ## Architecture
 
-This is a **Wails v3** desktop application combining:
-- **Go backend** (`main.go`, `greetservice.go`) - Handles application logic and services
-- **Svelte frontend** (`frontend/`) - TypeScript-based UI with Vite bundling
-- **Cross-platform builds** managed through Task files in `build/` directory
+Backkend loads configuration, manages integrations, and sends data to the frontend.
 
-### Key Components
+- `main.go` loads configuration, starts services, and runs the Wails application.
+- `pkg/` contains Go packages for services, utilities, and types.
+  - `pkg/config/` handles configuration loading and validation.
+  - `pkg/dashboard/service.go` defines the main service for the dashboard.
+  - `pkg/integrations/` defines integration services for various platforms.
+  - `pkg/widgets/` contain widget definitions and logic.
+- `frontend/` contains the Svelte frontend code.
+  - `frontend/bindings/` contains auto-generated TypeScript bindings for Go services.
+  - `frontend/src/Dashboard.svelte` is the main dashboard component.
+  - `frontend/src/widgets` defines frontend components for backend widgets.
 
-**Backend Structure:**
-- `main.go` - Application entry point, window configuration, and event emitter
-- `greetservice.go` - Service layer exposed to frontend via Wails bindings
-- Services are registered in `application.New()` and auto-generate TypeScript bindings
+## Wails
 
-**Frontend Structure:**
-- `frontend/src/App.svelte` - Main UI component
-- `frontend/src/bindings/` - Auto-generated TypeScript bindings for Go services
-- Uses `@wailsio/runtime` for Go service calls and event handling
+This project uses Wails v3alpha. Here are some key points:
 
-**Build System:**
-- `Taskfile.yml` - Main task runner with OS-specific builds
-- `build/` directory contains platform-specific build configurations
-- `frontend/dist/` gets embedded into Go binary via `embed.FS`
+- Wails provides a bridge between the Go backend and the Svelte frontend using *Services* and *Bindings*
+- Wails auto-generates bindings from Go services. `wails3 generate bindings -ts`
+- Services are Go structs with methods that can be called from the frontend.
+- Services have optional lifecycle methods: ServiceStartup(), ServiceShutdown(), ServiceName(), and ServeHTTP() for HTTP handling.
+- Structs are converted to TypeScript classes with propery typing.
+- Bindings support `context.Context`. Context cancellation yields promise rejection.
+- Errors automatically become promise rejections.
 
-### Development Flow
+## Svelte
 
-1. Frontend builds are embedded into Go binary at compile time
-2. Go services are exposed to frontend via Wails bindings
-3. Real-time communication via events (e.g., time updates from Go to frontend)
-4. Frontend calls Go services using generated TypeScript bindings
+This project uses Svelte 5. Importantly, this version adds support for *runes*.
 
-### Testing & Code Quality
-
-- **Go Tests**: `task test` or `go test ./pkg/...` - Run all Go unit tests
-- **Test Coverage**: `task test:coverage` - Generate coverage report and HTML visualization
-- **Linting**: `task lint` - Run golangci-lint on Go codebase
-- **Auto-fix**: `task lint:fix` - Run linter with automatic fixes
-- **New Code**: `task lint:new` - Lint only new/changed code since last commit
-- **Quality Check**: `task check` - Run both tests and linting
-- **Frontend**: `cd frontend && npm run check` - Svelte type checking
-
-### Logging and Debugging
-
-- I will run dev tools or the application itself. If you want to see logs from backend or frontend, just ask.
+- Runes are compiler instructions starting with `$` that control reactivity explicitly. They are not imported.
+- They work in `.svelte` and `.svelte.ts` files.
+- `$state` declares reactive state. It is deeply reactive unless you use `$state.raw()`.
+  - `let count = $state(0)`
+- `$derived` declares auto-updating computed values.
+  - `const doubled = $derived(count * 2)`
+  - `const filtered = $derived.by(() => items.filter(...))` for more complex cases.
+- `$effect` runs a function when dependencies change.
+  - `$effect(() => { console.log(count); })`
+  - `$effect(() => { setup(); return () => cleanup(); })` to support cleanup.
+- `$props` is used to declare reactive props in components. Read only by default.
+  - `let { name, age = 18 } = $props()`
+- `$bindable` to make props two-way bindable.
+  - `let { value = $bindable('') } = $props()`
+  - Parent uses `<Component bind:value={myValue} />`
+- `$inspect` is a dev-only state tracker.
+  - `$inspect(count)` to log changes in `count` during development.
