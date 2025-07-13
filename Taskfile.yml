@@ -47,6 +47,18 @@ tasks:
     cmds:
       - golangci-lint run --new-from-rev=HEAD~1
 
+  lint:frontend:
+    summary: Run ESLint on the frontend codebase
+    dir: frontend
+    cmds:
+      - npm run lint
+
+  lint:frontend:fix:
+    summary: Run ESLint with auto-fixing on the frontend
+    dir: frontend
+    cmds:
+      - npm run lint:fix
+
   test:
     summary: Run all Go tests
     cmds:
@@ -68,4 +80,5 @@ tasks:
     deps:
       - test
       - lint
+      - lint:frontend
 
