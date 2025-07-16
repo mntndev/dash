@@ -98,17 +98,21 @@ func (w *DexcomWidget) waitForConnectionAndUpdate(ctx context.Context) {
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
 
-	// Timeout after 30 seconds
+	// Timeout for initial connection after 30 seconds
 	timeout := time.NewTimer(30 * time.Second)
 	defer timeout.Stop()
+
+	connected := false
 
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-timeout.C:
-			fmt.Printf("Timeout waiting for Dexcom connection\n")
-			return
+			if !connected {
+				fmt.Printf("Timeout waiting for Dexcom connection\n")
+				return
+			}
 		case <-ticker.C:
 			// Use a timeout for potentially blocking provider calls
 			func() {
@@ -120,12 +124,17 @@ func (w *DexcomWidget) waitForConnectionAndUpdate(ctx context.Context) {
 
 				dexcomClient := w.dexcomProvider.GetDexcomClient()
 				if dexcomClient != nil && dexcomClient.IsConnected() {
+					if !connected {
+						connected = true
+						fmt.Printf("Dexcom widget successfully connected\n")
+						// Switch to less frequent polling after connection
+						ticker.Stop()
+						ticker = time.NewTicker(30 * time.Second)
+					}
+					
 					if err := w.updateData(); err != nil {
 						fmt.Printf("Failed to update Dexcom data: %v\n", err)
-					} else {
-						fmt.Printf("Dexcom widget successfully connected and updated\n")
 					}
-					// Don't return here, keep checking for updates
 				}
 			}()
 		}
