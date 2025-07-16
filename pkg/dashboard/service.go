@@ -192,6 +192,9 @@ func (ds *DashboardService) createWidgetWithChildren(widgetConfig config.WidgetC
 		return nil, fmt.Errorf("failed to initialize widget %s: %w", widgetID, err)
 	}
 
+	// Store the widget in the manager so it can be found by TriggerWidget
+	ds.widgetManager.StoreWidget(widgetID, widget)
+
 	if len(childWidgets) > 0 {
 		log.Printf("Created and initialized widget %s with %d children", widgetID, len(childWidgets))
 	} else {
