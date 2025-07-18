@@ -119,14 +119,6 @@ func (ds *DashboardService) Initialize() error {
 	if ds.config.Integrations.Dexcom != nil {
 		log.Printf("Initializing Dexcom client...")
 		ds.dexcomClient = integrations.NewDexcomClient(ds.config.Integrations.Dexcom)
-		go func() {
-			log.Printf("Connecting to Dexcom...")
-			if err := ds.dexcomClient.Connect(); err != nil {
-				log.Printf("Failed to connect to Dexcom: %v", err)
-			} else {
-				log.Printf("Successfully connected to Dexcom")
-			}
-		}()
 	}
 
 	log.Printf("Creating and initializing widgets...")
@@ -220,7 +212,7 @@ func (ds *DashboardService) getDashboardInfo() DashboardInfo {
 		status["home_assistant"] = ds.haClient.IsConnected()
 	}
 	if ds.dexcomClient != nil {
-		status["dexcom"] = ds.dexcomClient.IsConnected()
+		status["dexcom"] = true // Always available for stateless API
 	}
 
 	return DashboardInfo{
@@ -262,11 +254,7 @@ func (ds *DashboardService) Close() error {
 		}
 	}
 
-	if ds.dexcomClient != nil {
-		if err := ds.dexcomClient.Close(); err != nil {
-			log.Printf("Failed to close Dexcom client: %v", err)
-		}
-	}
+	// Dexcom client is stateless, no cleanup needed
 
 	return nil
 }
@@ -379,10 +367,7 @@ func (ds *DashboardService) ReloadConfig(ctx context.Context) error {
 	}
 
 	if ds.dexcomClient != nil {
-		if err := ds.dexcomClient.Close(); err != nil {
-			log.Printf("Failed to close Dexcom client during config reload: %v", err)
-		}
-		ds.dexcomClient = nil
+		ds.dexcomClient = nil // Dexcom client is stateless, no cleanup needed
 	}
 
 	widgetFactory := widgets.NewDefaultWidgetFactory(ds)

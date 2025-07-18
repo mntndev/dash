@@ -1,7 +1,6 @@
 package integrations
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"sync"
@@ -17,74 +16,25 @@ type DexcomProvider interface {
 
 type DexcomClient struct {
 	config         *config.DexcomConfig
-	client         *dexcomshare.Client
-	connected      bool
 	mu             sync.RWMutex
-	ctx            context.Context
-	cancel         context.CancelFunc
 	lastEntry      *dexcomshare.GlucoseEntry
 	lastUpdate     time.Time
-	updateInterval time.Duration
 	historicalData []dexcomshare.GlucoseEntry
 	maxHistory     int
 }
 
 func NewDexcomClient(cfg *config.DexcomConfig) *DexcomClient {
-	ctx, cancel := context.WithCancel(context.Background())
 	return &DexcomClient{
 		config:         cfg,
-		ctx:            ctx,
-		cancel:         cancel,
-		updateInterval: 1 * time.Minute,
 		historicalData: make([]dexcomshare.GlucoseEntry, 0),
 		maxHistory:     36, // 3 hours of 5-minute readings
 	}
 }
 
-func (dc *DexcomClient) Connect() error {
+func (dc *DexcomClient) FetchGlucoseData() error {
 	client, err := dexcomshare.NewClient(dc.config.Username, dc.config.Password)
 	if err != nil {
 		return fmt.Errorf("failed to create Dexcom client: %w", err)
-	}
-
-	dc.mu.Lock()
-	dc.client = client
-	dc.connected = true
-	dc.mu.Unlock()
-
-	go dc.updateLoop()
-
-	return nil
-}
-
-func (dc *DexcomClient) updateLoop() {
-	if err := dc.fetchGlucoseData(); err != nil {
-		log.Printf("Failed to fetch initial glucose data: %v", err)
-	}
-
-	ticker := time.NewTicker(dc.updateInterval)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-dc.ctx.Done():
-			return
-		case <-ticker.C:
-			if err := dc.fetchGlucoseData(); err != nil {
-				log.Printf("Failed to fetch glucose data: %v", err)
-			}
-		}
-	}
-}
-
-func (dc *DexcomClient) fetchGlucoseData() error {
-	dc.mu.RLock()
-	client := dc.client
-	connected := dc.connected
-	dc.mu.RUnlock()
-
-	if !connected || client == nil {
-		return fmt.Errorf("dexcom client not connected")
 	}
 
 	log.Printf("Making Dexcom API request...")
@@ -110,10 +60,6 @@ func (dc *DexcomClient) GetLatestGlucose() (*dexcomshare.GlucoseEntry, time.Time
 	dc.mu.RLock()
 	defer dc.mu.RUnlock()
 
-	if !dc.connected {
-		return nil, time.Time{}, fmt.Errorf("dexcom client not connected")
-	}
-
 	if dc.lastEntry == nil {
 		return nil, time.Time{}, fmt.Errorf("no glucose data available")
 	}
@@ -126,26 +72,8 @@ func (dc *DexcomClient) GetHistoricalGlucose() ([]dexcomshare.GlucoseEntry, erro
 	dc.mu.RLock()
 	defer dc.mu.RUnlock()
 
-	if !dc.connected {
-		return nil, fmt.Errorf("dexcom client not connected")
-	}
-
 	// Return a copy of the historical data
 	historicalCopy := make([]dexcomshare.GlucoseEntry, len(dc.historicalData))
 	copy(historicalCopy, dc.historicalData)
 	return historicalCopy, nil
-}
-
-func (dc *DexcomClient) IsConnected() bool {
-	dc.mu.RLock()
-	defer dc.mu.RUnlock()
-	return dc.connected
-}
-
-func (dc *DexcomClient) Close() error {
-	dc.cancel()
-	dc.mu.Lock()
-	dc.connected = false
-	dc.mu.Unlock()
-	return nil
 }

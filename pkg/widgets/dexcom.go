@@ -95,24 +95,18 @@ func (w *DexcomWidget) Init(ctx context.Context) error {
 }
 
 func (w *DexcomWidget) waitForConnectionAndUpdate(ctx context.Context) {
-	ticker := time.NewTicker(1 * time.Second)
+	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
 
-	// Timeout for initial connection after 30 seconds
-	timeout := time.NewTimer(30 * time.Second)
-	defer timeout.Stop()
-
-	connected := false
+	// Try to fetch data immediately
+	if err := w.updateData(); err != nil {
+		fmt.Printf("Failed to update Dexcom data: %v\n", err)
+	}
 
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-timeout.C:
-			if !connected {
-				fmt.Printf("Timeout waiting for Dexcom connection\n")
-				return
-			}
 		case <-ticker.C:
 			// Use a timeout for potentially blocking provider calls
 			func() {
@@ -122,19 +116,8 @@ func (w *DexcomWidget) waitForConnectionAndUpdate(ctx context.Context) {
 					}
 				}()
 
-				dexcomClient := w.dexcomProvider.GetDexcomClient()
-				if dexcomClient != nil && dexcomClient.IsConnected() {
-					if !connected {
-						connected = true
-						fmt.Printf("Dexcom widget successfully connected\n")
-						// Switch to less frequent polling after connection
-						ticker.Stop()
-						ticker = time.NewTicker(30 * time.Second)
-					}
-					
-					if err := w.updateData(); err != nil {
-						fmt.Printf("Failed to update Dexcom data: %v\n", err)
-					}
+				if err := w.updateData(); err != nil {
+					fmt.Printf("Failed to update Dexcom data: %v\n", err)
 				}
 			}()
 		}
@@ -143,8 +126,13 @@ func (w *DexcomWidget) waitForConnectionAndUpdate(ctx context.Context) {
 
 func (w *DexcomWidget) updateData() error {
 	dexcomClient := w.dexcomProvider.GetDexcomClient()
-	if dexcomClient == nil || !dexcomClient.IsConnected() {
-		return fmt.Errorf("dexcom client not connected")
+	if dexcomClient == nil {
+		return fmt.Errorf("dexcom client not available")
+	}
+
+	// Fetch fresh data from the API
+	if err := dexcomClient.FetchGlucoseData(); err != nil {
+		return fmt.Errorf("failed to fetch glucose data: %w", err)
 	}
 
 	latest, lastUpdate, err := dexcomClient.GetLatestGlucose()
