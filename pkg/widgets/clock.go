@@ -89,8 +89,8 @@ func (w *ClockWidget) startClockUpdater(ctx context.Context) {
 			}
 			w.LastUpdate = now
 
-			// Emit widget data update event
-			if w.provider != nil {
+			// Emit widget data update event only if frontend is ready
+			if w.provider != nil && w.provider.IsFrontendReady() {
 				w.provider.Emit("widget_data_update", map[string]interface{}{
 					"widget_id": w.ID,
 					"data":      w.Data,

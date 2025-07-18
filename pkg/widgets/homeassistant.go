@@ -61,7 +61,7 @@ type HAEntityData struct {
 func (hab *HABaseWidget) setDataAndEmit(data interface{}) {
 	hab.Data = data
 	hab.LastUpdate = time.Now()
-	if hab.provider != nil {
+	if hab.provider != nil && hab.provider.IsFrontendReady() {
 		hab.provider.Emit("widget_data_update", map[string]interface{}{
 			"widget_id": hab.ID,
 			"data":      data,

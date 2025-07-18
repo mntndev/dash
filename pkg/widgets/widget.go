@@ -17,6 +17,7 @@ type Provider interface {
 	GetHAClient() *integrations.HomeAssistantClient
 	GetDexcomClient() *integrations.DexcomClient
 	Emit(event string, data interface{})
+	IsFrontendReady() bool
 }
 
 type Widget interface {

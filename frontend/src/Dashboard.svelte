@@ -40,6 +40,13 @@
     onMount(async () => {
         await loadDashboard();
         Events.On("dashboard_info", handleDashboardUpdate);
+        
+        // Signal to backend that frontend is ready to receive events
+        try {
+            await DashboardService.SignalFrontendReady();
+        } catch (err) {
+            console.error("Failed to signal frontend ready:", err);
+        }
     });
 
     onDestroy(() => {

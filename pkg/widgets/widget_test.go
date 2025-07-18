@@ -37,6 +37,10 @@ func (m *MockProvider) Emit(event string, data interface{}) {
 	})
 }
 
+func (m *MockProvider) IsFrontendReady() bool {
+	return true // Mock provider always returns true for testing
+}
+
 func (m *MockProvider) GetEmittedEvents() []MockEvent {
 	return m.events
 }

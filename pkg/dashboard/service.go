@@ -24,6 +24,7 @@ type DashboardService struct {
 	ctx           context.Context
 	cancel        context.CancelFunc
 	initialized   bool
+	frontendReady bool
 	rootWidget    widgets.Widget
 }
 
@@ -243,6 +244,52 @@ func (ds *DashboardService) GetConfig() *config.Config {
 	ds.mu.RLock()
 	defer ds.mu.RUnlock()
 	return ds.config
+}
+
+// SignalFrontendReady is called by the frontend to indicate it's ready to receive events.
+func (ds *DashboardService) SignalFrontendReady() {
+	ds.mu.Lock()
+	defer ds.mu.Unlock()
+
+	if !ds.frontendReady {
+		ds.frontendReady = true
+		log.Printf("Frontend is now ready to receive events")
+
+		// Trigger initial state emission for all widgets
+		if ds.initialized {
+			ds.emitInitialWidgetStates()
+		}
+	}
+}
+
+// IsFrontendReady returns whether the frontend is ready to receive events.
+func (ds *DashboardService) IsFrontendReady() bool {
+	ds.mu.RLock()
+	defer ds.mu.RUnlock()
+	return ds.frontendReady
+}
+
+// emitInitialWidgetStates triggers initial state emission for all widgets.
+func (ds *DashboardService) emitInitialWidgetStates() {
+	if ds.rootWidget != nil {
+		ds.emitWidgetInitialState(ds.rootWidget)
+	}
+}
+
+// emitWidgetInitialState recursively emits initial state for a widget and its children.
+func (ds *DashboardService) emitWidgetInitialState(widget widgets.Widget) {
+	// Emit initial state for the widget if it has data
+	if widget.GetData() != nil {
+		ds.Emit("widget_data_update", map[string]interface{}{
+			"widget_id": widget.GetID(),
+			"data":      widget.GetData(),
+		})
+	}
+
+	// Recursively emit for children
+	for _, child := range widget.GetChildren() {
+		ds.emitWidgetInitialState(child)
+	}
 }
 
 func (ds *DashboardService) Close() error {

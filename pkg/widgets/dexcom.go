@@ -196,7 +196,7 @@ func (w *DexcomWidget) updateData() error {
 func (w *DexcomWidget) setDataAndEmit(data interface{}) {
 	w.Data = data
 	w.LastUpdate = time.Now()
-	if w.provider != nil {
+	if w.provider != nil && w.provider.IsFrontendReady() {
 		w.provider.Emit("widget_data_update", map[string]interface{}{
 			"widget_id": w.ID,
 			"data":      data,
