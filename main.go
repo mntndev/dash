@@ -1,14 +1,14 @@
 package main
 
 import (
-	"image/color"
 	"log"
 	"os"
 
 	"gioui.org/app"
-	"gioui.org/font/gofont"
 	"gioui.org/layout"
 	"gioui.org/op"
+	"gioui.org/op/clip"
+	"gioui.org/op/paint"
 	"gioui.org/text"
 	"gioui.org/widget/material"
 
@@ -52,8 +52,7 @@ type App struct {
 }
 
 func run(w *app.Window, cfg *config.Config) error {
-	th := material.NewTheme()
-	th.Shaper = text.NewShaper(text.WithCollection(gofont.Collection()))
+	th := cfg.Theme()
 
 	// Create dashboard service
 	dashService := dashboard.NewDashboardService(w)
@@ -82,20 +81,29 @@ func run(w *app.Window, cfg *config.Config) error {
 	}
 }
 
+type Layoutable interface {
+	Layout(gtx layout.Context) layout.Dimensions
+}
+
 func (a *App) Layout(gtx layout.Context) layout.Dimensions {
 	// Get the root widget from the dashboard service
-	rootWidget := a.dashService.GetRootWidget()
+	var rootWidget Layoutable = a.dashService.GetRootWidget()
 
 	if rootWidget == nil {
 		// Show loading or error state
 		title := material.H3(a.theme, "Loading Dashboard...")
-		title.Color = color.NRGBA{R: 255, G: 255, B: 255, A: 255}
 		title.Alignment = text.Middle
-		return layout.Center.Layout(gtx, title.Layout)
+		rootWidget = title
 	}
 
-	// Render the root widget
-	return rootWidget.Layout(gtx)
+	return layout.Background{}.Layout(gtx,
+		func(gtx layout.Context) layout.Dimensions {
+			defer clip.Rect{Max: gtx.Constraints.Max}.Push(gtx.Ops).Pop()
+			paint.Fill(gtx.Ops, a.theme.Bg)
+			return layout.Dimensions{Size: gtx.Constraints.Min}
+		}, func(gtx layout.Context) layout.Dimensions {
+			return rootWidget.Layout(gtx)
+		})
 }
 
 func getDefaultConfig() *config.Config {

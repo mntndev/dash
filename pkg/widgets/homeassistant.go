@@ -3,7 +3,6 @@ package widgets
 import (
 	"context"
 	"fmt"
-	"image/color"
 	"log"
 	"time"
 
@@ -35,6 +34,7 @@ type HABaseWidget struct {
 	subscription <-chan integrations.StateChangeEvent
 	cancelSub    context.CancelFunc
 	dataCallback func(*HAEntityData)
+	theme        *material.Theme
 }
 
 type HAEntityWidget struct {
@@ -212,7 +212,7 @@ func (hab *HABaseWidget) stopSubscription() {
 	}
 }
 
-func CreateHAEntityWidget(id string, config ast.Node, children []Widget, provider Provider, window *app.Window) (Widget, error) {
+func CreateHAEntityWidget(id string, config ast.Node, children []Widget, provider Provider, window *app.Window, theme *material.Theme) (Widget, error) {
 	// Parse config using NodeToValue
 	var haConfig HAEntityConfig
 	if config != nil {
@@ -237,6 +237,7 @@ func CreateHAEntityWidget(id string, config ast.Node, children []Widget, provide
 			EntityID:   haConfig.EntityID,
 			haProvider: provider,
 			provider:   provider,
+			theme:      theme,
 		},
 	}
 
@@ -246,7 +247,7 @@ func CreateHAEntityWidget(id string, config ast.Node, children []Widget, provide
 	return widget, nil
 }
 
-func CreateHASwitchWidget(id string, config ast.Node, children []Widget, provider Provider, window *app.Window) (Widget, error) {
+func CreateHASwitchWidget(id string, config ast.Node, children []Widget, provider Provider, window *app.Window, theme *material.Theme) (Widget, error) {
 	// Parse config using NodeToValue
 	var haConfig HAEntityConfig
 	if config != nil {
@@ -271,6 +272,7 @@ func CreateHASwitchWidget(id string, config ast.Node, children []Widget, provide
 			EntityID:   haConfig.EntityID,
 			haProvider: provider,
 			provider:   provider,
+			theme:      theme,
 		},
 	}
 
@@ -280,7 +282,7 @@ func CreateHASwitchWidget(id string, config ast.Node, children []Widget, provide
 	return widget, nil
 }
 
-func CreateHALightWidget(id string, config ast.Node, children []Widget, provider Provider, window *app.Window) (Widget, error) {
+func CreateHALightWidget(id string, config ast.Node, children []Widget, provider Provider, window *app.Window, theme *material.Theme) (Widget, error) {
 	// Parse config using NodeToValue
 	var haConfig HAEntityConfig
 	if config != nil {
@@ -305,6 +307,7 @@ func CreateHALightWidget(id string, config ast.Node, children []Widget, provider
 			EntityID:   haConfig.EntityID,
 			haProvider: provider,
 			provider:   provider,
+			theme:      theme,
 		},
 	}
 
@@ -314,7 +317,7 @@ func CreateHALightWidget(id string, config ast.Node, children []Widget, provider
 	return widget, nil
 }
 
-func CreateHAButtonWidget(id string, config ast.Node, children []Widget, provider Provider, window *app.Window) (Widget, error) {
+func CreateHAButtonWidget(id string, config ast.Node, children []Widget, provider Provider, window *app.Window, theme *material.Theme) (Widget, error) {
 	// Parse config using NodeToValue
 	var haConfig HAButtonConfig
 	if config != nil {
@@ -352,6 +355,7 @@ func CreateHAButtonWidget(id string, config ast.Node, children []Widget, provide
 			EntityID:   haConfig.EntityID,
 			haProvider: provider,
 			provider:   provider,
+			theme:      theme,
 		},
 		Service: haConfig.Service,
 		Domain:  haConfig.Domain,
@@ -519,9 +523,8 @@ func (w *HAEntityWidget) Layout(gtx layout.Context) layout.Dimensions {
 		text = fmt.Sprintf("%s: %s", w.data.EntityID, w.data.State)
 	}
 
-	th := material.NewTheme()
+	th := w.theme
 	label := material.Body1(th, text)
-	label.Color = color.NRGBA{R: 0, G: 0, B: 0, A: 255}
 	return label.Layout(gtx)
 }
 
@@ -536,9 +539,8 @@ func (w *HASwitchWidget) Layout(gtx layout.Context) layout.Dimensions {
 		text = fmt.Sprintf("Switch %s: %s", w.data.EntityID, w.data.State)
 	}
 
-	th := material.NewTheme()
+	th := w.theme
 	label := material.Body1(th, text)
-	label.Color = color.NRGBA{R: 0, G: 0, B: 0, A: 255}
 	return label.Layout(gtx)
 }
 
@@ -553,9 +555,8 @@ func (w *HALightWidget) Layout(gtx layout.Context) layout.Dimensions {
 		text = fmt.Sprintf("Light %s: %s", w.data.EntityID, w.data.State)
 	}
 
-	th := material.NewTheme()
+	th := w.theme
 	label := material.Body1(th, text)
-	label.Color = color.NRGBA{R: 0, G: 0, B: 0, A: 255}
 	return label.Layout(gtx)
 }
 
@@ -569,7 +570,7 @@ func (w *HAButtonWidget) Layout(gtx layout.Context) layout.Dimensions {
 		text = w.data.Label
 	}
 
-	th := material.NewTheme()
+	th := w.theme
 	btn := material.Button(th, nil, text)
 	return btn.Layout(gtx)
 }

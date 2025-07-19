@@ -2,11 +2,16 @@ package config
 
 import (
 	"fmt"
+	"image/color"
 	"os"
 	"path/filepath"
 
+	"gioui.org/font/gofont"
+	"gioui.org/text"
+	"gioui.org/widget/material"
 	"github.com/goccy/go-yaml"
 	"github.com/goccy/go-yaml/ast"
+	"github.com/lucasb-eyer/go-colorful"
 )
 
 type Config struct {
@@ -17,8 +22,16 @@ type Config struct {
 type DashboardConfig struct {
 	Title      string       `yaml:"title"`
 	Theme      string       `yaml:"theme"`
+	Colors     *ColorConfig `yaml:"colors,omitempty"`
 	Fullscreen bool         `yaml:"fullscreen"`
 	Widget     WidgetConfig `yaml:"widget"`
+}
+
+type ColorConfig struct {
+	Bg         string `yaml:"bg,omitempty"`
+	Fg         string `yaml:"fg,omitempty"`
+	ContrastBg string `yaml:"contrast_bg,omitempty"`
+	ContrastFg string `yaml:"contrast_fg,omitempty"`
 }
 
 type WidgetConfig struct {
@@ -145,4 +158,56 @@ func getConfigPaths() []string {
 	}
 
 	return paths
+}
+
+// parseColor parses a color string (hex, CSS names, etc.) into color.NRGBA using go-colorful
+func parseColor(colorStr string) (color.NRGBA, error) {
+	if colorStr == "" {
+		return color.NRGBA{}, fmt.Errorf("empty color string")
+	}
+
+	c, err := colorful.Hex(colorStr)
+	if err != nil {
+		return color.NRGBA{}, fmt.Errorf("failed to parse color %s: %w", colorStr, err)
+	}
+
+	r, g, b := c.RGB255()
+	return color.NRGBA{R: r, G: g, B: b, A: 255}, nil
+}
+
+// Theme returns a material theme configured for this dashboard
+func (c *Config) Theme() *material.Theme {
+	th := material.NewTheme()
+	th.Shaper = text.NewShaper(text.WithCollection(gofont.Collection()))
+
+	// Apply custom colors if configured
+	if c.Dashboard.Colors != nil {
+		palette := &th.Palette
+
+		if c.Dashboard.Colors.Bg != "" {
+			if color, err := parseColor(c.Dashboard.Colors.Bg); err == nil {
+				palette.Bg = color
+			}
+		}
+
+		if c.Dashboard.Colors.Fg != "" {
+			if color, err := parseColor(c.Dashboard.Colors.Fg); err == nil {
+				palette.Fg = color
+			}
+		}
+
+		if c.Dashboard.Colors.ContrastBg != "" {
+			if color, err := parseColor(c.Dashboard.Colors.ContrastBg); err == nil {
+				palette.ContrastBg = color
+			}
+		}
+
+		if c.Dashboard.Colors.ContrastFg != "" {
+			if color, err := parseColor(c.Dashboard.Colors.ContrastFg); err == nil {
+				palette.ContrastFg = color
+			}
+		}
+	}
+
+	return th
 }

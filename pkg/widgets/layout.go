@@ -7,6 +7,7 @@ import (
 
 	"gioui.org/app"
 	"gioui.org/layout"
+	"gioui.org/widget/material"
 	"github.com/goccy/go-yaml/ast"
 )
 
@@ -30,7 +31,7 @@ type VFlexWidget struct {
 	*BaseWidget
 }
 
-func CreateHStackWidget(id string, config ast.Node, children []Widget, provider Provider, window *app.Window) (Widget, error) {
+func CreateHStackWidget(id string, config ast.Node, children []Widget, provider Provider, window *app.Window, theme *material.Theme) (Widget, error) {
 	widget := &HStackWidget{
 		BaseWidget: &BaseWidget{
 			ID:       id,
@@ -43,7 +44,7 @@ func CreateHStackWidget(id string, config ast.Node, children []Widget, provider 
 	return widget, nil
 }
 
-func CreateVStackWidget(id string, config ast.Node, children []Widget, provider Provider, window *app.Window) (Widget, error) {
+func CreateVStackWidget(id string, config ast.Node, children []Widget, provider Provider, window *app.Window, theme *material.Theme) (Widget, error) {
 	widget := &VStackWidget{
 		BaseWidget: &BaseWidget{
 			ID:       id,
@@ -56,7 +57,7 @@ func CreateVStackWidget(id string, config ast.Node, children []Widget, provider 
 	return widget, nil
 }
 
-func CreateHFlexWidget(id string, config ast.Node, children []Widget, provider Provider, window *app.Window) (Widget, error) {
+func CreateHFlexWidget(id string, config ast.Node, children []Widget, provider Provider, window *app.Window, theme *material.Theme) (Widget, error) {
 	widget := &HFlexWidget{
 		BaseWidget: &BaseWidget{
 			ID:       id,
@@ -69,7 +70,7 @@ func CreateHFlexWidget(id string, config ast.Node, children []Widget, provider P
 	return widget, nil
 }
 
-func CreateVFlexWidget(id string, config ast.Node, children []Widget, provider Provider, window *app.Window) (Widget, error) {
+func CreateVFlexWidget(id string, config ast.Node, children []Widget, provider Provider, window *app.Window, theme *material.Theme) (Widget, error) {
 	widget := &VFlexWidget{
 		BaseWidget: &BaseWidget{
 			ID:       id,

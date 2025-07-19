@@ -3,7 +3,6 @@ package widgets
 import (
 	"context"
 	"fmt"
-	"image/color"
 	"strconv"
 	"strings"
 	"time"
@@ -28,6 +27,7 @@ type DexcomWidget struct {
 	lowThreshold   int
 	highThreshold  int
 	data           *DexcomData
+	theme          *material.Theme
 }
 
 type DexcomData struct {
@@ -46,7 +46,7 @@ type DexcomReading struct {
 	Timestamp time.Time `json:"timestamp"`
 }
 
-func CreateDexcomWidget(id string, config ast.Node, children []Widget, provider Provider, window *app.Window) (Widget, error) {
+func CreateDexcomWidget(id string, config ast.Node, children []Widget, provider Provider, window *app.Window, theme *material.Theme) (Widget, error) {
 	// Parse config using NodeToValue
 	var dexcomConfig DexcomConfig
 	if config != nil {
@@ -77,6 +77,7 @@ func CreateDexcomWidget(id string, config ast.Node, children []Widget, provider 
 		provider:       provider,
 		lowThreshold:   lowThreshold,
 		highThreshold:  highThreshold,
+		theme:          theme,
 	}
 
 	return widget, nil
@@ -252,9 +253,8 @@ func (w *DexcomWidget) Layout(gtx layout.Context) layout.Dimensions {
 		text = fmt.Sprintf("%d %s %s", w.data.Value, w.data.Unit, w.data.Trend)
 	}
 
-	th := material.NewTheme()
+	th := w.theme
 	label := material.H4(th, text)
-	label.Color = color.NRGBA{R: 0, G: 0, B: 0, A: 255}
 	return label.Layout(gtx)
 }
 

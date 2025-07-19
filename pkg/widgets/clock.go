@@ -3,7 +3,6 @@ package widgets
 import (
 	"context"
 	"fmt"
-	"image/color"
 	"strings"
 	"time"
 
@@ -25,6 +24,7 @@ type ClockWidget struct {
 	lastSecond int
 	provider   Provider
 	data       *ClockData
+	theme      *material.Theme
 }
 
 type ClockData struct {
@@ -33,7 +33,7 @@ type ClockData struct {
 	Display string    `json:"display"`
 }
 
-func CreateClockWidget(id string, config ast.Node, children []Widget, provider Provider, window *app.Window) (Widget, error) {
+func CreateClockWidget(id string, config ast.Node, children []Widget, provider Provider, window *app.Window, theme *material.Theme) (Widget, error) {
 	// Parse config using NodeToValue
 	var clockConfig ClockConfig
 	if config != nil {
@@ -58,6 +58,7 @@ func CreateClockWidget(id string, config ast.Node, children []Widget, provider P
 		Format:     format,
 		lastSecond: -1, // Initialize to -1 to force first update
 		provider:   provider,
+		theme:      theme,
 	}
 
 	return widget, nil
@@ -112,10 +113,7 @@ func (w *ClockWidget) Layout(gtx layout.Context) layout.Dimensions {
 		clock_text = w.data.Display
 	}
 
-	// Create a default theme for rendering
-	th := material.NewTheme()
-	label := material.H3(th, clock_text)
-	label.Color = color.NRGBA{R: 0, G: 0, B: 0, A: 255}
+	label := material.H3(w.theme, clock_text)
 	label.Alignment = text.Middle
 	return label.Layout(gtx)
 }

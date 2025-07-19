@@ -31,7 +31,6 @@ type EventEmitter interface {
 	Emit(event string, data interface{})
 }
 
-
 type GioEventEmitter struct {
 	// For now, just log events - we'll expand this later
 }
@@ -172,7 +171,7 @@ func (ds *DashboardService) createWidgetWithChildren(widgetConfig config.WidgetC
 	}
 
 	// Create the parent widget with ID and children at creation time
-	widget, err := ds.widgetManager.GetFactory().Create(widgetConfig.Type, widgetID, widgetConfig.Config, childWidgets, ds.window)
+	widget, err := ds.widgetManager.GetFactory().Create(widgetConfig.Type, widgetID, widgetConfig.Config, childWidgets, ds.window, ds.config.Theme())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create widget %s: %w", widgetID, err)
 	}
@@ -244,7 +243,6 @@ func (ds *DashboardService) GetConfig() *config.Config {
 	return ds.config
 }
 
-
 func (ds *DashboardService) Close() error {
 	ds.cancel()
 
@@ -258,7 +256,6 @@ func (ds *DashboardService) Close() error {
 
 	return nil
 }
-
 
 // GetRootWidget returns the root widget for Gio UI rendering
 func (ds *DashboardService) GetRootWidget() widgets.Widget {

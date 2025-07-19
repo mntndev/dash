@@ -3,7 +3,6 @@ package widgets
 import (
 	"context"
 	"fmt"
-	"image/color"
 	"log"
 	"strings"
 	"time"
@@ -85,7 +84,6 @@ func (w *BaseWidget) Layout(gtx layout.Context) layout.Dimensions {
 	text := fmt.Sprintf("Unknown widget: %s", w.GetType())
 	th := material.NewTheme()
 	label := material.Body1(th, text)
-	label.Color = color.NRGBA{R: 0, G: 0, B: 0, A: 255}
 	return label.Layout(gtx)
 }
 
@@ -95,7 +93,7 @@ func (w *BaseWidget) Invalidate() {
 	}
 }
 
-type WidgetCreator func(id string, config ast.Node, children []Widget, provider Provider, window *app.Window) (Widget, error)
+type WidgetCreator func(id string, config ast.Node, children []Widget, provider Provider, window *app.Window, theme *material.Theme) (Widget, error)
 
 type WidgetRegistry struct {
 	creators map[string]WidgetCreator
@@ -111,12 +109,12 @@ func (wr *WidgetRegistry) Register(widgetType string, creator WidgetCreator) {
 	wr.creators[widgetType] = creator
 }
 
-func (wr *WidgetRegistry) Create(widgetType, id string, config ast.Node, children []Widget, provider Provider, window *app.Window) (Widget, error) {
+func (wr *WidgetRegistry) Create(widgetType, id string, config ast.Node, children []Widget, provider Provider, window *app.Window, theme *material.Theme) (Widget, error) {
 	creator, exists := wr.creators[widgetType]
 	if !exists {
 		return nil, fmt.Errorf("unsupported widget type: %s", widgetType)
 	}
-	return creator(id, config, children, provider, window)
+	return creator(id, config, children, provider, window, theme)
 }
 
 func (wr *WidgetRegistry) GetSupportedTypes() []string {
@@ -128,7 +126,7 @@ func (wr *WidgetRegistry) GetSupportedTypes() []string {
 }
 
 type WidgetFactory interface {
-	Create(widgetType string, id string, config ast.Node, children []Widget, window *app.Window) (Widget, error)
+	Create(widgetType string, id string, config ast.Node, children []Widget, window *app.Window, theme *material.Theme) (Widget, error)
 	GetSupportedTypes() []string
 }
 
@@ -166,13 +164,13 @@ func registerBuiltinWidgets(registry *WidgetRegistry) {
 	registry.Register("hflex", CreateHFlexWidget)
 	registry.Register("vflex", CreateVFlexWidget)
 
-	registry.Register("grow", func(id string, config ast.Node, children []Widget, provider Provider, window *app.Window) (Widget, error) {
+	registry.Register("grow", func(id string, config ast.Node, children []Widget, provider Provider, window *app.Window, theme *material.Theme) (Widget, error) {
 		return CreateGrowWidgetWithWindow(id, config, children, window)
 	})
 }
 
-func (f *DefaultWidgetFactory) Create(widgetType, id string, config ast.Node, children []Widget, window *app.Window) (Widget, error) {
-	return f.registry.Create(widgetType, id, config, children, f.provider, window)
+func (f *DefaultWidgetFactory) Create(widgetType, id string, config ast.Node, children []Widget, window *app.Window, theme *material.Theme) (Widget, error) {
+	return f.registry.Create(widgetType, id, config, children, f.provider, window, theme)
 }
 
 func (f *DefaultWidgetFactory) GetSupportedTypes() []string {
@@ -191,8 +189,8 @@ func NewWidgetManager(factory WidgetFactory) *WidgetManager {
 	}
 }
 
-func (wm *WidgetManager) CreateWidget(id, widgetType string, config ast.Node, children []Widget, window *app.Window) error {
-	widget, err := wm.factory.Create(widgetType, id, config, children, window)
+func (wm *WidgetManager) CreateWidget(id, widgetType string, config ast.Node, children []Widget, window *app.Window, theme *material.Theme) error {
+	widget, err := wm.factory.Create(widgetType, id, config, children, window, theme)
 	if err != nil {
 		return fmt.Errorf("failed to create widget %s: %w", id, err)
 	}
