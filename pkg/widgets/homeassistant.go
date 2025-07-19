@@ -3,9 +3,13 @@ package widgets
 import (
 	"context"
 	"fmt"
+	"image/color"
 	"log"
 	"time"
 
+	"gioui.org/app"
+	"gioui.org/layout"
+	"gioui.org/widget/material"
 	"github.com/goccy/go-yaml"
 	"github.com/goccy/go-yaml/ast"
 	"github.com/mntndev/dash/pkg/integrations"
@@ -30,24 +34,29 @@ type HABaseWidget struct {
 	provider     Provider
 	subscription <-chan integrations.StateChangeEvent
 	cancelSub    context.CancelFunc
+	dataCallback func(*HAEntityData)
 }
 
 type HAEntityWidget struct {
 	*HABaseWidget
+	data *HAEntityData
 }
 
 type HAButtonWidget struct {
 	*HABaseWidget
 	Service string
 	Domain  string
+	data    *HAButtonData
 }
 
 type HASwitchWidget struct {
 	*HABaseWidget
+	data *HAEntityData
 }
 
 type HALightWidget struct {
 	*HABaseWidget
+	data *HAEntityData
 }
 
 type HAEntityData struct {
@@ -58,15 +67,22 @@ type HAEntityData struct {
 	LastUpdated time.Time              `json:"last_updated"`
 }
 
-func (hab *HABaseWidget) setDataAndEmit(data interface{}) {
-	hab.Data = data
-	hab.LastUpdate = time.Now()
-	if hab.provider != nil && hab.provider.IsFrontendReady() {
-		hab.provider.Emit("widget_data_update", map[string]interface{}{
-			"widget_id": hab.ID,
-			"data":      data,
-		})
-	}
+func (w *HAEntityWidget) setDataAndInvalidate(data *HAEntityData) {
+	w.data = data
+	w.LastUpdate = time.Now()
+	w.Invalidate()
+}
+
+func (w *HASwitchWidget) setDataAndInvalidate(data *HAEntityData) {
+	w.data = data
+	w.LastUpdate = time.Now()
+	w.Invalidate()
+}
+
+func (w *HALightWidget) setDataAndInvalidate(data *HAEntityData) {
+	w.data = data
+	w.LastUpdate = time.Now()
+	w.Invalidate()
 }
 
 type HAButtonData struct {
@@ -146,7 +162,9 @@ func (hab *HABaseWidget) processStateChanges(ctx context.Context) {
 					LastChanged: event.NewState.LastChanged,
 					LastUpdated: event.NewState.LastUpdated,
 				}
-				hab.setDataAndEmit(data)
+				if hab.dataCallback != nil {
+					hab.dataCallback(data)
+				}
 			}
 		}
 	}
@@ -172,7 +190,9 @@ func (hab *HABaseWidget) fetchInitialState() error {
 				LastChanged: state.LastChanged,
 				LastUpdated: state.LastUpdated,
 			}
-			hab.setDataAndEmit(data)
+			if hab.dataCallback != nil {
+				hab.dataCallback(data)
+			}
 			return nil
 		}
 	}
@@ -192,7 +212,7 @@ func (hab *HABaseWidget) stopSubscription() {
 	}
 }
 
-func CreateHAEntityWidget(id string, config ast.Node, children []Widget, provider Provider) (Widget, error) {
+func CreateHAEntityWidget(id string, config ast.Node, children []Widget, provider Provider, window *app.Window) (Widget, error) {
 	// Parse config using NodeToValue
 	var haConfig HAEntityConfig
 	if config != nil {
@@ -212,6 +232,7 @@ func CreateHAEntityWidget(id string, config ast.Node, children []Widget, provide
 				Type:     "home_assistant.entity",
 				Config:   config,
 				Children: children,
+				window:   window,
 			},
 			EntityID:   haConfig.EntityID,
 			haProvider: provider,
@@ -219,10 +240,13 @@ func CreateHAEntityWidget(id string, config ast.Node, children []Widget, provide
 		},
 	}
 
+	// Set up the data callback
+	widget.dataCallback = widget.setDataAndInvalidate
+
 	return widget, nil
 }
 
-func CreateHASwitchWidget(id string, config ast.Node, children []Widget, provider Provider) (Widget, error) {
+func CreateHASwitchWidget(id string, config ast.Node, children []Widget, provider Provider, window *app.Window) (Widget, error) {
 	// Parse config using NodeToValue
 	var haConfig HAEntityConfig
 	if config != nil {
@@ -242,6 +266,7 @@ func CreateHASwitchWidget(id string, config ast.Node, children []Widget, provide
 				Type:     "home_assistant.switch",
 				Config:   config,
 				Children: children,
+				window:   window,
 			},
 			EntityID:   haConfig.EntityID,
 			haProvider: provider,
@@ -249,10 +274,13 @@ func CreateHASwitchWidget(id string, config ast.Node, children []Widget, provide
 		},
 	}
 
+	// Set up the data callback
+	widget.dataCallback = widget.setDataAndInvalidate
+
 	return widget, nil
 }
 
-func CreateHALightWidget(id string, config ast.Node, children []Widget, provider Provider) (Widget, error) {
+func CreateHALightWidget(id string, config ast.Node, children []Widget, provider Provider, window *app.Window) (Widget, error) {
 	// Parse config using NodeToValue
 	var haConfig HAEntityConfig
 	if config != nil {
@@ -272,6 +300,7 @@ func CreateHALightWidget(id string, config ast.Node, children []Widget, provider
 				Type:     "home_assistant.light",
 				Config:   config,
 				Children: children,
+				window:   window,
 			},
 			EntityID:   haConfig.EntityID,
 			haProvider: provider,
@@ -279,10 +308,13 @@ func CreateHALightWidget(id string, config ast.Node, children []Widget, provider
 		},
 	}
 
+	// Set up the data callback
+	widget.dataCallback = widget.setDataAndInvalidate
+
 	return widget, nil
 }
 
-func CreateHAButtonWidget(id string, config ast.Node, children []Widget, provider Provider) (Widget, error) {
+func CreateHAButtonWidget(id string, config ast.Node, children []Widget, provider Provider, window *app.Window) (Widget, error) {
 	// Parse config using NodeToValue
 	var haConfig HAButtonConfig
 	if config != nil {
@@ -315,6 +347,7 @@ func CreateHAButtonWidget(id string, config ast.Node, children []Widget, provide
 				Type:     "home_assistant.button",
 				Config:   config,
 				Children: children,
+				window:   window,
 			},
 			EntityID:   haConfig.EntityID,
 			haProvider: provider,
@@ -324,7 +357,7 @@ func CreateHAButtonWidget(id string, config ast.Node, children []Widget, provide
 		Domain:  haConfig.Domain,
 	}
 
-	widget.Data = &HAButtonData{
+	widget.data = &HAButtonData{
 		EntityID: haConfig.EntityID,
 		Service:  haConfig.Service,
 		Domain:   haConfig.Domain,
@@ -337,7 +370,7 @@ func CreateHAButtonWidget(id string, config ast.Node, children []Widget, provide
 func (w *HAEntityWidget) Init(ctx context.Context) error {
 	w.LastUpdate = time.Now()
 	// Initialize with empty data to avoid null
-	w.Data = &HAEntityData{
+	w.data = &HAEntityData{
 		EntityID:    w.EntityID,
 		State:       "unknown",
 		Attributes:  make(map[string]interface{}),
@@ -365,7 +398,7 @@ func (w *HAEntityWidget) Init(ctx context.Context) error {
 func (w *HASwitchWidget) Init(ctx context.Context) error {
 	w.LastUpdate = time.Now()
 	// Initialize with empty data to avoid null
-	w.Data = &HAEntityData{
+	w.data = &HAEntityData{
 		EntityID:    w.EntityID,
 		State:       "unknown",
 		Attributes:  make(map[string]interface{}),
@@ -392,7 +425,7 @@ func (w *HASwitchWidget) Init(ctx context.Context) error {
 func (w *HALightWidget) Init(ctx context.Context) error {
 	w.LastUpdate = time.Now()
 	// Initialize with empty data to avoid null
-	w.Data = &HAEntityData{
+	w.data = &HAEntityData{
 		EntityID:    w.EntityID,
 		State:       "unknown",
 		Attributes:  make(map[string]interface{}),
@@ -480,9 +513,33 @@ func (w *HAEntityWidget) Close() error {
 	return nil
 }
 
+func (w *HAEntityWidget) Layout(gtx layout.Context) layout.Dimensions {
+	text := "HA Entity"
+	if w.data != nil {
+		text = fmt.Sprintf("%s: %s", w.data.EntityID, w.data.State)
+	}
+
+	th := material.NewTheme()
+	label := material.Body1(th, text)
+	label.Color = color.NRGBA{R: 0, G: 0, B: 0, A: 255}
+	return label.Layout(gtx)
+}
+
 func (w *HASwitchWidget) Close() error {
 	w.stopSubscription()
 	return nil
+}
+
+func (w *HASwitchWidget) Layout(gtx layout.Context) layout.Dimensions {
+	text := "HA Switch"
+	if w.data != nil {
+		text = fmt.Sprintf("Switch %s: %s", w.data.EntityID, w.data.State)
+	}
+
+	th := material.NewTheme()
+	label := material.Body1(th, text)
+	label.Color = color.NRGBA{R: 0, G: 0, B: 0, A: 255}
+	return label.Layout(gtx)
 }
 
 func (w *HALightWidget) Close() error {
@@ -490,6 +547,29 @@ func (w *HALightWidget) Close() error {
 	return nil
 }
 
+func (w *HALightWidget) Layout(gtx layout.Context) layout.Dimensions {
+	text := "HA Light"
+	if w.data != nil {
+		text = fmt.Sprintf("Light %s: %s", w.data.EntityID, w.data.State)
+	}
+
+	th := material.NewTheme()
+	label := material.Body1(th, text)
+	label.Color = color.NRGBA{R: 0, G: 0, B: 0, A: 255}
+	return label.Layout(gtx)
+}
+
 func (w *HAButtonWidget) Close() error {
 	return nil
+}
+
+func (w *HAButtonWidget) Layout(gtx layout.Context) layout.Dimensions {
+	text := "HA Button"
+	if w.data != nil {
+		text = w.data.Label
+	}
+
+	th := material.NewTheme()
+	btn := material.Button(th, nil, text)
+	return btn.Layout(gtx)
 }

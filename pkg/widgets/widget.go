@@ -3,10 +3,14 @@ package widgets
 import (
 	"context"
 	"fmt"
+	"image/color"
 	"log"
 	"strings"
 	"time"
 
+	"gioui.org/app"
+	"gioui.org/layout"
+	"gioui.org/widget/material"
 	"github.com/goccy/go-yaml"
 	"github.com/goccy/go-yaml/ast"
 	"github.com/mntndev/dash/pkg/integrations"
@@ -16,17 +20,15 @@ import (
 type Provider interface {
 	GetHAClient() *integrations.HomeAssistantClient
 	GetDexcomClient() *integrations.DexcomClient
-	Emit(event string, data interface{})
-	IsFrontendReady() bool
 }
 
 type Widget interface {
 	GetID() string
 	GetType() string
-	GetData() interface{}
 	Init(ctx context.Context) error
 	GetChildren() []Widget
 	Close() error
+	Layout(gtx layout.Context) layout.Dimensions
 }
 
 // Triggerable interface defines widgets that can be manually triggered.
@@ -52,9 +54,9 @@ type BaseWidget struct {
 	ID         string      `json:"ID"`
 	Type       string      `json:"Type"`
 	Config     ast.Node    `json:"-"`
-	Data       interface{} `json:"Data"`
 	LastUpdate time.Time   `json:"LastUpdate"`
 	Children   []Widget    `json:"Children"`
+	window     *app.Window `json:"-"`
 }
 
 func (w *BaseWidget) GetID() string {
@@ -63,10 +65,6 @@ func (w *BaseWidget) GetID() string {
 
 func (w *BaseWidget) GetType() string {
 	return w.Type
-}
-
-func (w *BaseWidget) GetData() interface{} {
-	return w.Data
 }
 
 func (w *BaseWidget) GetChildren() []Widget {
@@ -82,7 +80,22 @@ func (w *BaseWidget) Close() error {
 	return nil
 }
 
-type WidgetCreator func(id string, config ast.Node, children []Widget, provider Provider) (Widget, error)
+func (w *BaseWidget) Layout(gtx layout.Context) layout.Dimensions {
+	// Default implementation: render as unknown widget
+	text := fmt.Sprintf("Unknown widget: %s", w.GetType())
+	th := material.NewTheme()
+	label := material.Body1(th, text)
+	label.Color = color.NRGBA{R: 0, G: 0, B: 0, A: 255}
+	return label.Layout(gtx)
+}
+
+func (w *BaseWidget) Invalidate() {
+	if w.window != nil {
+		w.window.Invalidate()
+	}
+}
+
+type WidgetCreator func(id string, config ast.Node, children []Widget, provider Provider, window *app.Window) (Widget, error)
 
 type WidgetRegistry struct {
 	creators map[string]WidgetCreator
@@ -98,12 +111,12 @@ func (wr *WidgetRegistry) Register(widgetType string, creator WidgetCreator) {
 	wr.creators[widgetType] = creator
 }
 
-func (wr *WidgetRegistry) Create(widgetType, id string, config ast.Node, children []Widget, provider Provider) (Widget, error) {
+func (wr *WidgetRegistry) Create(widgetType, id string, config ast.Node, children []Widget, provider Provider, window *app.Window) (Widget, error) {
 	creator, exists := wr.creators[widgetType]
 	if !exists {
 		return nil, fmt.Errorf("unsupported widget type: %s", widgetType)
 	}
-	return creator(id, config, children, provider)
+	return creator(id, config, children, provider, window)
 }
 
 func (wr *WidgetRegistry) GetSupportedTypes() []string {
@@ -115,7 +128,7 @@ func (wr *WidgetRegistry) GetSupportedTypes() []string {
 }
 
 type WidgetFactory interface {
-	Create(widgetType string, id string, config ast.Node, children []Widget) (Widget, error)
+	Create(widgetType string, id string, config ast.Node, children []Widget, window *app.Window) (Widget, error)
 	GetSupportedTypes() []string
 }
 
@@ -147,21 +160,19 @@ func registerBuiltinWidgets(registry *WidgetRegistry) {
 
 	registry.Register("clock", CreateClockWidget)
 
-	registry.Register("horizontal_split", func(id string, config ast.Node, children []Widget, provider Provider) (Widget, error) {
-		return CreateHorizontalSplitWidget(id, config, children)
-	})
+	// New layout widgets
+	registry.Register("hstack", CreateHStackWidget)
+	registry.Register("vstack", CreateVStackWidget)
+	registry.Register("hflex", CreateHFlexWidget)
+	registry.Register("vflex", CreateVFlexWidget)
 
-	registry.Register("vertical_split", func(id string, config ast.Node, children []Widget, provider Provider) (Widget, error) {
-		return CreateVerticalSplitWidget(id, config, children)
-	})
-
-	registry.Register("grow", func(id string, config ast.Node, children []Widget, provider Provider) (Widget, error) {
-		return CreateGrowWidget(id, config, children)
+	registry.Register("grow", func(id string, config ast.Node, children []Widget, provider Provider, window *app.Window) (Widget, error) {
+		return CreateGrowWidgetWithWindow(id, config, children, window)
 	})
 }
 
-func (f *DefaultWidgetFactory) Create(widgetType, id string, config ast.Node, children []Widget) (Widget, error) {
-	return f.registry.Create(widgetType, id, config, children, f.provider)
+func (f *DefaultWidgetFactory) Create(widgetType, id string, config ast.Node, children []Widget, window *app.Window) (Widget, error) {
+	return f.registry.Create(widgetType, id, config, children, f.provider, window)
 }
 
 func (f *DefaultWidgetFactory) GetSupportedTypes() []string {
@@ -180,8 +191,8 @@ func NewWidgetManager(factory WidgetFactory) *WidgetManager {
 	}
 }
 
-func (wm *WidgetManager) CreateWidget(id, widgetType string, config ast.Node, children []Widget) error {
-	widget, err := wm.factory.Create(widgetType, id, config, children)
+func (wm *WidgetManager) CreateWidget(id, widgetType string, config ast.Node, children []Widget, window *app.Window) error {
+	widget, err := wm.factory.Create(widgetType, id, config, children, window)
 	if err != nil {
 		return fmt.Errorf("failed to create widget %s: %w", id, err)
 	}
@@ -227,6 +238,14 @@ type GrowConfig struct {
 }
 
 func CreateGrowWidget(id string, config ast.Node, children []Widget) (Widget, error) {
+	return createGrowWidget(id, config, children, nil)
+}
+
+func CreateGrowWidgetWithWindow(id string, config ast.Node, children []Widget, window *app.Window) (Widget, error) {
+	return createGrowWidget(id, config, children, window)
+}
+
+func createGrowWidget(id string, config ast.Node, children []Widget, window *app.Window) (Widget, error) {
 	// Parse grow value from config using NodeToValue
 	var growConfig GrowConfig
 	if config != nil {
@@ -261,6 +280,7 @@ func CreateGrowWidget(id string, config ast.Node, children []Widget) (Widget, er
 			Type:     "grow",
 			Config:   config,
 			Children: children,
+			window:   window,
 		},
 		GrowValue: growValue,
 	}
@@ -269,10 +289,6 @@ func CreateGrowWidget(id string, config ast.Node, children []Widget) (Widget, er
 }
 
 func (w *GrowWidget) Init(ctx context.Context) error {
-	w.Data = map[string]interface{}{
-		"type":       w.Type,
-		"grow_value": w.GrowValue,
-	}
 	w.LastUpdate = time.Now()
 	return nil
 }
@@ -287,14 +303,18 @@ func (w *GrowWidget) IsContainer() bool {
 
 func (w *GrowWidget) SetChildren(children []Widget) {
 	w.Children = children
-	// Update data timestamp when children are set
-	w.Data = map[string]interface{}{
-		"type":       w.Type,
-		"grow_value": w.GrowValue,
-	}
 	w.LastUpdate = time.Now()
 }
 
 func (w *GrowWidget) Close() error {
 	return nil
+}
+
+func (w *GrowWidget) Layout(gtx layout.Context) layout.Dimensions {
+	children := w.GetChildren()
+	if len(children) == 0 {
+		return layout.Dimensions{}
+	}
+	// Grow widget just renders its first child
+	return children[0].Layout(gtx)
 }

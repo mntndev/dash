@@ -7,10 +7,10 @@ import (
 	"sync"
 	"time"
 
+	"gioui.org/app"
 	"github.com/mntndev/dash/pkg/config"
 	"github.com/mntndev/dash/pkg/integrations"
 	"github.com/mntndev/dash/pkg/widgets"
-	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 type DashboardService struct {
@@ -19,12 +19,11 @@ type DashboardService struct {
 	haClient      *integrations.HomeAssistantClient
 	dexcomClient  *integrations.DexcomClient
 	eventEmitter  EventEmitter
-	app           *application.App
+	window        *app.Window
 	mu            sync.RWMutex
 	ctx           context.Context
 	cancel        context.CancelFunc
 	initialized   bool
-	frontendReady bool
 	rootWidget    widgets.Widget
 }
 
@@ -32,14 +31,13 @@ type EventEmitter interface {
 	Emit(event string, data interface{})
 }
 
-type WailsEventEmitter struct {
-	app *application.App
+
+type GioEventEmitter struct {
+	// For now, just log events - we'll expand this later
 }
 
-func (w *WailsEventEmitter) Emit(event string, data interface{}) {
-	if w.app != nil {
-		w.app.Event.Emit(event, data)
-	}
+func (g *GioEventEmitter) Emit(event string, data interface{}) {
+	log.Printf("Event emitted: %s", event)
 }
 
 // WidgetData represents the dynamic data of a widget.
@@ -58,7 +56,7 @@ type DashboardInfo struct {
 	Status     map[string]interface{} `json:"status"`
 }
 
-func NewDashboardService(app *application.App) *DashboardService {
+func NewDashboardService(window *app.Window) *DashboardService {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	// Load config with fallback to default
@@ -79,13 +77,13 @@ func NewDashboardService(app *application.App) *DashboardService {
 		}
 	}
 
-	// Create event emitter
-	eventEmitter := &WailsEventEmitter{app: app}
+	// Create a simple event emitter for Gio
+	eventEmitter := &GioEventEmitter{}
 
 	service := &DashboardService{
 		config:       cfg,
 		eventEmitter: eventEmitter,
-		app:          app,
+		window:       window,
 		ctx:          ctx,
 		cancel:       cancel,
 	}
@@ -174,7 +172,7 @@ func (ds *DashboardService) createWidgetWithChildren(widgetConfig config.WidgetC
 	}
 
 	// Create the parent widget with ID and children at creation time
-	widget, err := ds.widgetManager.GetFactory().Create(widgetConfig.Type, widgetID, widgetConfig.Config, childWidgets)
+	widget, err := ds.widgetManager.GetFactory().Create(widgetConfig.Type, widgetID, widgetConfig.Config, childWidgets, ds.window)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create widget %s: %w", widgetID, err)
 	}
@@ -246,51 +244,6 @@ func (ds *DashboardService) GetConfig() *config.Config {
 	return ds.config
 }
 
-// SignalFrontendReady is called by the frontend to indicate it's ready to receive events.
-func (ds *DashboardService) SignalFrontendReady() {
-	ds.mu.Lock()
-	defer ds.mu.Unlock()
-
-	if !ds.frontendReady {
-		ds.frontendReady = true
-		log.Printf("Frontend is now ready to receive events")
-
-		// Trigger initial state emission for all widgets
-		if ds.initialized {
-			ds.emitInitialWidgetStates()
-		}
-	}
-}
-
-// IsFrontendReady returns whether the frontend is ready to receive events.
-func (ds *DashboardService) IsFrontendReady() bool {
-	ds.mu.RLock()
-	defer ds.mu.RUnlock()
-	return ds.frontendReady
-}
-
-// emitInitialWidgetStates triggers initial state emission for all widgets.
-func (ds *DashboardService) emitInitialWidgetStates() {
-	if ds.rootWidget != nil {
-		ds.emitWidgetInitialState(ds.rootWidget)
-	}
-}
-
-// emitWidgetInitialState recursively emits initial state for a widget and its children.
-func (ds *DashboardService) emitWidgetInitialState(widget widgets.Widget) {
-	// Emit initial state for the widget if it has data
-	if widget.GetData() != nil {
-		ds.Emit("widget_data_update", map[string]interface{}{
-			"widget_id": widget.GetID(),
-			"data":      widget.GetData(),
-		})
-	}
-
-	// Recursively emit for children
-	for _, child := range widget.GetChildren() {
-		ds.emitWidgetInitialState(child)
-	}
-}
 
 func (ds *DashboardService) Close() error {
 	ds.cancel()
@@ -306,126 +259,10 @@ func (ds *DashboardService) Close() error {
 	return nil
 }
 
-// Wails Service Lifecycle Methods
 
-// ServiceStartup is called when the service is being started.
-func (ds *DashboardService) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
-	log.Println("Dashboard service starting up...")
-
-	// Initialize the dashboard service in a goroutine to avoid blocking startup
-	go func() {
-		if err := ds.Initialize(); err != nil {
-			log.Printf("Failed to initialize dashboard service: %v", err)
-		} else {
-			log.Println("Dashboard service initialized successfully")
-		}
-	}()
-
-	return nil
-}
-
-// ServiceShutdown is called when the service is being shut down.
-func (ds *DashboardService) ServiceShutdown(ctx context.Context) error {
-	log.Println("Dashboard service shutting down...")
-	return ds.Close()
-}
-
-// Wails Exported Methods
-
-// GetDashboardInfo returns the current dashboard structure and status for Wails.
-func (ds *DashboardService) GetDashboardInfo(ctx context.Context) (*DashboardInfo, error) {
+// GetRootWidget returns the root widget for Gio UI rendering
+func (ds *DashboardService) GetRootWidget() widgets.Widget {
 	ds.mu.RLock()
 	defer ds.mu.RUnlock()
-	info := ds.getDashboardInfo()
-	return &info, nil
-}
-
-// GetWidgetData returns the current data for a specific widget for Wails.
-func (ds *DashboardService) GetWidgetData(ctx context.Context, widgetID string) (*WidgetData, error) {
-	// This method doesn't exist yet, I need to add it
-	ds.mu.RLock()
-	defer ds.mu.RUnlock()
-
-	widget, exists := ds.widgetManager.GetWidget(widgetID)
-	if !exists {
-		return nil, fmt.Errorf("widget %s not found", widgetID)
-	}
-
-	return &WidgetData{
-		ID:         widget.GetID(),
-		Type:       widget.GetType(),
-		Data:       widget.GetData(),
-		LastUpdate: time.Now(), // You may want to get this from the widget
-	}, nil
-}
-
-// TriggerWidget activates a triggerable widget for Wails.
-func (ds *DashboardService) TriggerWidget(ctx context.Context, widgetID string) error {
-	ds.mu.RLock()
-	defer ds.mu.RUnlock()
-
-	widget, exists := ds.widgetManager.GetWidget(widgetID)
-	if !exists {
-		return fmt.Errorf("widget not found: %s", widgetID)
-	}
-
-	if triggerable, ok := widget.(widgets.Triggerable); ok {
-		return triggerable.Trigger()
-	}
-
-	return fmt.Errorf("widget %s does not support triggering", widgetID)
-}
-
-// SetLightBrightness controls the brightness of a light widget for Wails.
-func (ds *DashboardService) SetLightBrightness(ctx context.Context, widgetID string, brightness int) error {
-	ds.mu.RLock()
-	defer ds.mu.RUnlock()
-
-	widget, exists := ds.widgetManager.GetWidget(widgetID)
-	if !exists {
-		return fmt.Errorf("widget not found: %s", widgetID)
-	}
-
-	if brightnessControllable, ok := widget.(widgets.BrightnessControllable); ok {
-		return brightnessControllable.SetBrightness(brightness)
-	}
-
-	return fmt.Errorf("widget %s does not support brightness control", widgetID)
-}
-
-// ReloadConfig reloads the dashboard configuration for Wails.
-func (ds *DashboardService) ReloadConfig(ctx context.Context) error {
-	ds.mu.Lock()
-	defer ds.mu.Unlock()
-
-	configPath := config.GetDefaultConfigPath()
-	newConfig, err := config.LoadConfig(configPath)
-	if err != nil {
-		return fmt.Errorf("failed to load new config: %w", err)
-	}
-
-	ds.config = newConfig
-
-	if ds.haClient != nil {
-		if err := ds.haClient.Close(); err != nil {
-			log.Printf("Failed to close Home Assistant client during config reload: %v", err)
-		}
-		ds.haClient = nil
-	}
-
-	if ds.dexcomClient != nil {
-		ds.dexcomClient = nil // Dexcom client is stateless, no cleanup needed
-	}
-
-	widgetFactory := widgets.NewDefaultWidgetFactory(ds)
-	ds.widgetManager = widgets.NewWidgetManager(widgetFactory)
-
-	return ds.Initialize()
-}
-
-// IsFullscreenEnabled returns whether fullscreen mode is enabled.
-func (ds *DashboardService) IsFullscreenEnabled(ctx context.Context) bool {
-	ds.mu.RLock()
-	defer ds.mu.RUnlock()
-	return ds.config.Dashboard.Fullscreen
+	return ds.rootWidget
 }

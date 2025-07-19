@@ -1,75 +1,101 @@
 package main
 
 import (
-	"embed"
+	"image/color"
 	"log"
-	"time"
+	"os"
+
+	"gioui.org/app"
+	"gioui.org/font/gofont"
+	"gioui.org/layout"
+	"gioui.org/op"
+	"gioui.org/text"
+	"gioui.org/widget/material"
 
 	"github.com/mntndev/dash/pkg/config"
 	"github.com/mntndev/dash/pkg/dashboard"
-	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
-//go:embed all:frontend/dist
-var assets embed.FS
-
 func main() {
-	app := application.New(application.Options{
-		Name:        "dash",
-		Description: "A configurable dashboard for external services",
-		Assets: application.AssetOptions{
-			Handler: application.AssetFileServerFS(assets),
-		},
-		Mac: application.MacOptions{
-			ApplicationShouldTerminateAfterLastWindowClosed: true,
-		},
-	})
-
-	// Create and register the dashboard service
-	dashService := dashboard.NewDashboardService(app)
-	app.RegisterService(application.NewService(dashService))
-
-	log.Println("Creating window...")
-	window := app.Window.New()
-	log.Println("Window created with defaults")
-
-	window.SetTitle("Dash - Dashboard")
-
-	// For window configuration, we'll need to load config directly here
-	// since service methods now require context and are not available at this point
-	configPath := config.GetDefaultConfigPath()
-	cfg, err := config.LoadConfig(configPath)
-	if err != nil {
-		log.Printf("Failed to load config for window setup: %v. Using defaults.", err)
-		cfg = getDefaultConfig()
-	}
-
-	// Check if fullscreen is enabled in config
-	if cfg.Dashboard.Fullscreen {
-		log.Println("Fullscreen mode enabled")
-		window.Fullscreen()
-	} else {
-		window.SetSize(1200, 800)
-		window.Center()
-	}
-
-	log.Println("Window configured, showing...")
-	window.Show()
-	log.Println("Window show() called")
-
 	go func() {
-		for {
-			now := time.Now().Format(time.RFC1123)
-			app.Event.Emit("time", now)
-			time.Sleep(time.Second)
+		w := new(app.Window)
+		w.Option(app.Title("Dash - Dashboard"))
+
+		// Load configuration
+		configPath := config.GetDefaultConfigPath()
+		cfg, err := config.LoadConfig(configPath)
+		if err != nil {
+			log.Printf("Failed to load config: %v. Using defaults.", err)
+			cfg = getDefaultConfig()
 		}
+
+		// Set additional window options based on config
+		if cfg.Dashboard.Fullscreen {
+			log.Println("Fullscreen mode enabled")
+			// Set a large window size for fullscreen-like experience
+			w.Option(app.Size(1920, 1080))
+		} else {
+			w.Option(app.Size(1200, 800))
+		}
+
+		if err := run(w, cfg); err != nil {
+			log.Fatal(err)
+		}
+		os.Exit(0)
 	}()
+	app.Main()
+}
 
-	runErr := app.Run()
+type App struct {
+	dashService *dashboard.DashboardService
+	theme       *material.Theme
+}
 
-	if runErr != nil {
-		log.Fatal(runErr)
+func run(w *app.Window, cfg *config.Config) error {
+	th := material.NewTheme()
+	th.Shaper = text.NewShaper(text.WithCollection(gofont.Collection()))
+
+	// Create dashboard service
+	dashService := dashboard.NewDashboardService(w)
+
+	// Initialize the service
+	if err := dashService.Initialize(); err != nil {
+		log.Printf("Failed to initialize dashboard service: %v", err)
 	}
+
+	dashApp := &App{
+		dashService: dashService,
+		theme:       th,
+	}
+
+	var ops op.Ops
+	for {
+		e := w.Event()
+		if e, ok := e.(app.FrameEvent); ok {
+			gtx := app.NewContext(&ops, e)
+			dashApp.Layout(gtx)
+			e.Frame(gtx.Ops)
+		}
+		if _, ok := e.(app.DestroyEvent); ok {
+			return nil
+		}
+	}
+}
+
+func (a *App) Layout(gtx layout.Context) layout.Dimensions {
+	// Get the root widget from the dashboard service
+	rootWidget := a.dashService.GetRootWidget()
+
+	if rootWidget == nil {
+		// Show loading or error state
+		title := material.H3(a.theme, "Loading Dashboard...")
+		title.Color = color.NRGBA{R: 255, G: 255, B: 255, A: 255}
+		title.Alignment = text.Middle
+		return layout.Center.Layout(gtx, title.Layout)
+	}
+
+	// Render the root widget
+	return rootWidget.Layout(gtx)
 }
 
 func getDefaultConfig() *config.Config {

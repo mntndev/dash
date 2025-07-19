@@ -1,36 +1,25 @@
 version: '3'
 
-includes:
-  common: ./build/Taskfile.yml
-  windows: ./build/windows/Taskfile.yml
-  darwin: ./build/darwin/Taskfile.yml
-  linux: ./build/linux/Taskfile.yml
-
 vars:
   APP_NAME: "dash"
   BIN_DIR: "bin"
-  VITE_PORT: '{{.WAILS_VITE_PORT | default 9245}}'
 
 tasks:
   build:
     summary: Builds the application
     cmds:
-      - task: "{{OS}}:build"
-
-  package:
-    summary: Packages a production build of the application
-    cmds:
-      - task: "{{OS}}:package"
+      - mkdir -p {{.BIN_DIR}}
+      - go build -o {{.BIN_DIR}}/{{.APP_NAME}}{{exeExt}} main.go
 
   run:
     summary: Runs the application
     cmds:
-      - task: "{{OS}}:run"
+      - go run main.go
 
   dev:
     summary: Runs the application in development mode
     cmds:
-      - wails3 dev -config ./build/config.yml -port {{.VITE_PORT}}
+      - go run main.go
 
   lint:
     summary: Run golangci-lint on the Go codebase
@@ -46,18 +35,6 @@ tasks:
     summary: Run golangci-lint only on new/changed code
     cmds:
       - golangci-lint run --new-from-rev=HEAD~1
-
-  lint:frontend:
-    summary: Run ESLint on the frontend codebase
-    dir: frontend
-    cmds:
-      - npm run lint
-
-  lint:frontend:fix:
-    summary: Run ESLint with auto-fixing on the frontend
-    dir: frontend
-    cmds:
-      - npm run lint:fix
 
   test:
     summary: Run all Go tests
@@ -80,5 +57,9 @@ tasks:
     deps:
       - test
       - lint
-      - lint:frontend
+
+  clean:
+    summary: Clean build artifacts
+    cmds:
+      - rm -rf {{.BIN_DIR}}
 

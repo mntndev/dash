@@ -3,10 +3,14 @@ package widgets
 import (
 	"context"
 	"fmt"
+	"image/color"
 	"strconv"
 	"strings"
 	"time"
 
+	"gioui.org/app"
+	"gioui.org/layout"
+	"gioui.org/widget/material"
 	"github.com/goccy/go-yaml"
 	"github.com/goccy/go-yaml/ast"
 	"github.com/mntndev/dash/pkg/integrations"
@@ -23,6 +27,7 @@ type DexcomWidget struct {
 	provider       Provider
 	lowThreshold   int
 	highThreshold  int
+	data           *DexcomData
 }
 
 type DexcomData struct {
@@ -41,7 +46,7 @@ type DexcomReading struct {
 	Timestamp time.Time `json:"timestamp"`
 }
 
-func CreateDexcomWidget(id string, config ast.Node, children []Widget, provider Provider) (Widget, error) {
+func CreateDexcomWidget(id string, config ast.Node, children []Widget, provider Provider, window *app.Window) (Widget, error) {
 	// Parse config using NodeToValue
 	var dexcomConfig DexcomConfig
 	if config != nil {
@@ -66,6 +71,7 @@ func CreateDexcomWidget(id string, config ast.Node, children []Widget, provider 
 			Type:     "dexcom",
 			Config:   config,
 			Children: children,
+			window:   window,
 		},
 		dexcomProvider: provider,
 		provider:       provider,
@@ -188,20 +194,15 @@ func (w *DexcomWidget) updateData() error {
 		HighThreshold: w.getHighThreshold(),
 	}
 
-	w.setDataAndEmit(data)
+	w.setDataAndInvalidate(data)
 	w.LastUpdate = lastUpdate
 	return nil
 }
 
-func (w *DexcomWidget) setDataAndEmit(data interface{}) {
-	w.Data = data
+func (w *DexcomWidget) setDataAndInvalidate(data *DexcomData) {
+	w.data = data
 	w.LastUpdate = time.Now()
-	if w.provider != nil && w.provider.IsFrontendReady() {
-		w.provider.Emit("widget_data_update", map[string]interface{}{
-			"widget_id": w.ID,
-			"data":      data,
-		})
-	}
+	w.Invalidate()
 }
 
 func parseDexcomTimestamp(dateStr string) time.Time {
@@ -243,6 +244,18 @@ func parseDexcomTimestamp(dateStr string) time.Time {
 
 func (w *DexcomWidget) Close() error {
 	return nil
+}
+
+func (w *DexcomWidget) Layout(gtx layout.Context) layout.Dimensions {
+	text := "Dexcom"
+	if w.data != nil {
+		text = fmt.Sprintf("%d %s %s", w.data.Value, w.data.Unit, w.data.Trend)
+	}
+
+	th := material.NewTheme()
+	label := material.H4(th, text)
+	label.Color = color.NRGBA{R: 0, G: 0, B: 0, A: 255}
+	return label.Layout(gtx)
 }
 
 func formatTrendString(trend string) string {
