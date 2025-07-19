@@ -1,5 +1,6 @@
 .task
 bin
+tmp
 frontend/dist
 frontend/node_modules
 build/linux/appimage/build
@@ -8,3 +9,4 @@ config.yaml
 dash
 coverage.out
 coverage.html
+build-errors.log

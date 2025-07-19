@@ -1,4 +1,4 @@
-version: '3'
+version: "3"
 
 vars:
   APP_NAME: "dash"
@@ -22,9 +22,9 @@ tasks:
       - go run main.go
 
   dev:
-    summary: Runs the application in development mode
+    summary: Runs the application in development mode with live reload
     cmds:
-      - go run main.go
+      - air
 
   lint:
     summary: Run golangci-lint on the Go codebase
@@ -67,4 +67,3 @@ tasks:
     summary: Clean build artifacts
     cmds:
       - rm -rf {{.BIN_DIR}}
-
