@@ -41,7 +41,7 @@ jobs:
       if: matrix.platform == 'linux'
       run: |
         sudo apt-get update
-        sudo apt-get install -y --no-install-recommends build-essential pkg-config libx11-dev libxcursor-dev libxrandr-dev libxinerama-dev libxi-dev libgl1-mesa-dev
+        sudo apt-get install -y --no-install-recommends build-essential pkg-config libx11-dev libxcursor-dev libxrandr-dev libxinerama-dev libxi-dev libgl1-mesa-dev libxkbcommon-dev
     
     - name: Cache Go binaries
       uses: actions/cache@v4
@@ -60,11 +60,17 @@ jobs:
       env:
         GOARCH: ${{ matrix.arch }}
         CGO_ENABLED: 1
-      run: task build
+      run: |
+        mkdir -p bin
+        if [ "${{ matrix.platform }}" = "linux" ]; then
+          go build --tags nowayland -o bin/dash-${{ matrix.platform }}-${{ matrix.arch }} main.go
+        else
+          go build -o bin/dash-${{ matrix.platform }}-${{ matrix.arch }} main.go
+        fi
     
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
         name: dash-${{ matrix.platform }}-${{ matrix.arch }}
-        path: bin/dash*
+        path: bin/dash-${{ matrix.platform }}-${{ matrix.arch }}*
         retention-days: 30

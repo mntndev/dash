@@ -9,7 +9,12 @@ tasks:
     summary: Builds the application
     cmds:
       - mkdir -p {{.BIN_DIR}}
-      - go build -o {{.BIN_DIR}}/{{.APP_NAME}}{{exeExt}} main.go
+      - |
+        {{if eq OS "linux"}}
+        go build --tags nowayland -o {{.BIN_DIR}}/{{.APP_NAME}}{{exeExt}} main.go
+        {{else}}
+        go build -o {{.BIN_DIR}}/{{.APP_NAME}}{{exeExt}} main.go
+        {{end}}
 
   run:
     summary: Runs the application

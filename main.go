@@ -33,7 +33,7 @@ func main() {
 		if cfg.Dashboard.Fullscreen {
 			log.Println("Fullscreen mode enabled")
 			// Set a large window size for fullscreen-like experience
-			w.Option(app.Size(1920, 1080))
+			w.Option(app.Fullscreen.Option())
 		} else {
 			w.Option(app.Size(1200, 800))
 		}
