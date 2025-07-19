@@ -41,7 +41,7 @@ jobs:
         if: matrix.platform == 'linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends build-essential pkg-config libx11-dev libxcursor-dev libxrandr-dev libxinerama-dev libxi-dev libgl1-mesa-dev libxkbcommon-dev
+          sudo apt-get install -y --no-install-recommends build-essential pkg-config libx11-dev libxcursor-dev libxrandr-dev libxinerama-dev libxi-dev libgl1-mesa-dev libxkbcommon-dev libvulkan-dev
 
       - name: Install Task
         run: |
@@ -50,14 +50,8 @@ jobs:
           fi
 
       - name: Build binary
-        env:
-          GOOS: ${{ matrix.platform }}
-          GOARCH: ${{ matrix.arch }}
-          CGO_ENABLED: 1
         run: |
           mkdir -p bin
-          echo "Building for GOOS=$GOOS GOARCH=$GOARCH"
-          go env GOOS GOARCH
           if [ "${{ matrix.platform }}" = "linux" ]; then
             go build --tags nowayland -o bin/dash-${{ matrix.platform }}-${{ matrix.arch }} main.go
           else
