@@ -14,6 +14,7 @@ require (
 
 require (
 	gioui.org/shader v1.0.8 // indirect
+	github.com/ajstarks/giocanvas v0.0.0-20250621171535-62b782607962 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/go-text/typesetting v0.2.1 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
